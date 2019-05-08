@@ -1,0 +1,77 @@
+#!/bin/sh
+
+# kinda brittle, this, but mostly works
+# just don't use names with whitespaces
+
+target='confconf'
+srcdir='src'
+sources=`find $srcdir -type f -name '*.c' | sed -e "s/$srcdir\/\(.*\).c/\1.c/"`
+objdir='build'
+objects=`find $srcdir -type f -name '*.c' | sed -e "s/$srcdir\/\(.*\).c/\1.o/"`
+
+cc='cc'
+cflags='-Wall -O2'
+cflagsdebug='-Wall -ggdb3 -O0 -DDEBUG'
+prefix='/usr/local'
+
+
+
+
+dbg_objects=`printf %s "$objects" | sed -e "s/^/dbg_/"`
+sources_wdir=`printf %s "$sources" | sed -e "s/^/$srcdir\//"`
+objects_wdir=`printf %s "$objects" | sed -e "s/^/$objdir\//"`
+
+dgen='gcc'
+if [ ! `2>/dev/null which gcc` ]; then
+	if [ ! `2>/dev/null which clang` ]; then
+		echo 'err: could not find a suitable ' \
+			'compiler for calculating dependencies'
+		return 1
+	fi
+	dgen='clang'
+fi
+
+{
+	printf %s\\n '.POSIX:'
+	printf %s\\n '.SUFFIXES:'
+	printf %s\\n ''
+	printf %s\\n "CC = $cc"
+	printf %s\\n "CFLAGS = $cflags"
+	printf %s\\n "CFLAGSDEBUG = $cflagsdebug"
+	printf %s\\n "PREFIX = $prefix"
+	printf %s\\n ''
+	printf %s\\n "all: objdir $target"
+	printf %s\\n ''
+	printf %s\\n "debug: objdir dbg_$target"
+	printf %s\\n ''
+	printf %s\\n 'objdir:'
+	printf %s\\n "	mkdir -p $objdir"
+	printf %s\\n ''
+	printf %s\\n "install: all"
+	printf %s\\n '	mkdir -p $(DESTDIR)$(PREFIX)/bin'
+	printf %s\\n '	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1'
+	printf %s\\n "	cp -f $target \$(DESTDIR)\$(PREFIX)/bin"
+	printf %s\\n "	gzip < ${target}.1 > \$(DESTDIR)\$(PREFIX)/share/man/man1/${target}.1.gz"
+	printf %s\\n ''
+	printf %s\\n "$target: `printf %s "$objects" | tr '\n' ' '`"
+	printf %s\\n "	\$(CC) \$(LDFLAGS) -o $target `printf %s "$objects_wdir" | tr '\n' ' '` \$(LDLIBS)"
+	printf %s\\n ''
+	printf %s\\n "dbg_$target: `printf %s "$dbg_objects" | tr '\n' ' '`"
+	printf %s\\n "	\$(CC) \$(LDFLAGS) -o $target `printf %s "$objects_wdir" | tr '\n' ' '` \$(LDLIBS)"
+	printf %s\\n ''
+	printf %s\\n "$sources" | (while IFS= read -r s; do
+		$dgen $CFLAGS -MM -MT `printf %s $s | sed -e 's/\.c$/\.o/'` "$srcdir/$s"
+		printf %s\\n "	\$(CC) -c \$(CFLAGS) -o ${objdir}/`printf %s $s | sed -e 's/\.c$/\.o/'` ${srcdir}/$s"
+	done
+	)
+	printf %s\\n ''
+	printf %s\\n "$sources" | (while IFS= read -r s; do
+		$dgen $CFLAGS -MM -MT dbg_`printf %s $s | sed -e 's/\.c$/\.o/'` "$srcdir/$s"
+		printf %s\\n "	\$(CC) -c \$(CFLAGSDEBUG) -o ${objdir}/`printf %s $s | sed -e 's/\.c$/\.o/'` ${srcdir}/$s"
+	done
+	)
+	printf %s\\n ''
+	printf %s\\n 'clean:'
+	printf %s\\n "	rm -f $target"
+	printf %s\\n "	rm -rf $objdir"
+} > Makefile

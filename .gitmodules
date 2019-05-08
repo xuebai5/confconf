@@ -1,0 +1,3 @@
+[submodule "reqs/simple-opt"]
+	path = reqs/simple-opt
+	url = https://github.com/shmibs/simple-opt
