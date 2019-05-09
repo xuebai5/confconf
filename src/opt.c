@@ -34,7 +34,7 @@ void opt_parse(int argc, char **argv)
 	/* help */
 	if (options[0].was_seen) {
 		simple_opt_print_usage(stdout, 70, argv[0],
-				"[-i input] [-o output]",
+				"[-i input.confconf] [-o output.h]",
 				"confconf is a config file parser generator for C",
 				options);
 		exit(EXIT_SUCCESS);
