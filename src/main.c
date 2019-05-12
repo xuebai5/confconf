@@ -1,48 +1,27 @@
-#include "opt.h"
 #include "err.h"
-#include "tok.h"
-
-#include <stdio.h>
-#include <errno.h>
-
-
-
+#include "opt.h"
+#include "parse.h"
 
 int main(int argc, char **argv)
 {
 	FILE *fi = stdin;
-	struct tok_s t;
+	const char *finame = "stdin";
+	struct parse_result_s pr;
 
 	opt_parse(argc, argv);
 
 	if (opt_infile_str() != NULL) {
-		fi = fopen(opt_infile_str(), "r");
-		TRY(fi != NULL, "could not read file `%s`", opt_infile_str());
+		finame = opt_infile_str();
+		fi = fopen(finame, "r");
+		TRY(fi != NULL, "could not read file `%s`", finame);
 	}
 
-	while (1) {
-		t = tok_get(fi);
+	pr = parse(fi, finame);
 
-		if (t.type == TOK_UNKNWN || t.type == TOK_END)
-			break;
+	if (fi != stdin)
+		fclose(fi);
 
-		printf("%s:%zu:%zu: ", (fi == stdin ? "stdin" : opt_infile_str()),
-				t.line, t.col);
-
-		if (t.type > TOK_QMARK) {
-			printf("%u, `%s`\n", t.type, t.val);
-		} else {
-			printf("%u\n", t.type);
-		}
-	};
-
-	if (t.type == TOK_UNKNWN) {
-		printf("%s:%zu:%zu: error: unrecognised token `%s`\n",
-				(fi == stdin ? "stdin" : opt_infile_str()),
-				t.line, t.col, t.val);
-	}
-
-	fclose(fi);
+	parse_result_wipe(&pr);
 
 	return 0;
 }

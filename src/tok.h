@@ -3,21 +3,25 @@
 
 #include <stdio.h>
 
+#define TOK_MAX_LEN 128
+
 enum tok_type_e {
-	      TOK_LBRACE = 0,
-	      TOK_RBRACE = 1,
-	       TOK_EQUAL = 2,
-	       TOK_COMMA = 3,
-	        TOK_BANG = 4,
-	       TOK_QMARK = 5,
-	   TOK_OP_STRUCT = 6,
-	TOK_OP_HKEY_SIZE = 7,
-	TOK_OP_HKEY_NAME = 8,
-	  TOK_OP_FUN_SUF = 9,
-	        TOK_UINT = 10,
-	          TOK_ID = 11,
-	      TOK_UNKNWN = 12,
-	         TOK_END = 13,
+	TOK_LBRACE,
+	TOK_RBRACE,
+	TOK_EQUAL,
+	TOK_COMMA,
+	TOK_BANG,
+	TOK_QMARK,
+	TOK_ASTERISK,
+	TOK_OP_STRUCT,
+	TOK_OP_UNION,
+	TOK_OP_HKEY_SIZE,
+	TOK_OP_HKEY_NAME,
+	TOK_OP_FUN_SUF,
+	TOK_UINT,
+	TOK_ID,
+	TOK_UNKNWN,
+	TOK_END,
 };
 
 struct tok_s {
@@ -27,6 +31,9 @@ struct tok_s {
 	char *val;
 };
 
-struct tok_s tok_get(FILE *f);
+void tok_reset(FILE *f);
+
+struct tok_s tok_get(void);
+void tok_unget(struct tok_s t);
 
 #endif
