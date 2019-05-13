@@ -367,6 +367,11 @@ struct parse_result_s parse(FILE *f, const char *fname)
 			ERR_AT(t.line, t.col, "unexpected token `%s`", t.val);
 	}
 
+	if (r.vars == NULL) {
+		fprintf(stderr, "\e[1m%s:\e[0m ", fname);
+		ERR("config must specify at fewest one variable rule");
+	}
+
 	HASH_ITER(hh, r.vars, vcur, vtmp) {
 		switch (vcur->type) {
 		case PARSE_TYPE_DEFTYPE:
