@@ -1,3 +1,4 @@
+#include "version.h"
 #include "opt.h"
 
 #include "../reqs/simple-opt/simple-opt.h"
@@ -21,7 +22,6 @@ static struct simple_opt options[] = {
 void opt_parse(int argc, char **argv)
 {
 	struct simple_opt_result result;
-	const char version[] = "confconf develop";
 
 	result = simple_opt_parse(argc, argv, options);
 
@@ -42,7 +42,7 @@ void opt_parse(int argc, char **argv)
 
 	/* version */
 	if (options[1].was_seen) {
-		puts(version);
+		puts(VERSION);
 		exit(EXIT_SUCCESS);
 	}
 }
