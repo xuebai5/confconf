@@ -64,20 +64,18 @@ fi
 	printf %s\\n '	printf "%s\n%s\n\n%s%s%s\n\n%s\n" \'
 	printf %s\\n '		"#ifndef CONFCONF_VERSION_H" \'
 	printf %s\\n '		"#define CONFCONF_VERSION_H" \'
-	printf %s\\n '		"#define VERSION \"confconf " "`git rev-parse --short=8 HEAD`" "\"" \'
+	printf %s\\n '		"#define VERSION \"confconf " "`git describe --always --tags`" "\"" \'
 	printf %s\\n '		"#endif" > src/version.h'
 	printf %s\\n ''
 	printf %s\\n "$sources" | (while IFS= read -r s; do
 		$dgen $CFLAGS -MM -MG -MT ${objdir}/release/`printf %s $s | sed -e 's/\.c$/\.o/'` "$srcdir/$s" | sed -e "s/version.h/$srcdir\/version.h/g"
 		printf %s\\n "	\$(CC) -c \$(CFLAGS) -o ${objdir}/release/`printf %s $s | sed -e 's/\.c$/\.o/'` ${srcdir}/$s"
-	done
-	)
+	done)
 	printf %s\\n ''
 	printf %s\\n "$sources" | (while IFS= read -r s; do
 		$dgen $CFLAGS -MM -MG -MT ${objdir}/debug/`printf %s $s | sed -e 's/\.c$/\.o/'` "$srcdir/$s" | sed -e "s/version.h/$srcdir\/version.h/g"
 		printf %s\\n "	\$(CC) -c \$(CFLAGSDEBUG) -o ${objdir}/debug/`printf %s $s | sed -e 's/\.c$/\.o/'` ${srcdir}/$s"
-	done
-	)
+	done)
 	printf %s\\n ''
 	printf %s\\n 'clean:'
 	printf %s\\n '	rm -f src/version.h'
