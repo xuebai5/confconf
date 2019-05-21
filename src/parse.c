@@ -338,6 +338,17 @@ static bool sub_parse_rule(void)
 	return true;
 }
 
+static int sub_sort_deftypes(struct parse_deftype_s *d1,
+		struct parse_deftype_s *d2)
+{
+	return strcmp(d1->name, d2->name);
+}
+
+static int sub_sort_vars(struct parse_var_s *v1, struct parse_var_s *v2)
+{
+	return strcmp(v1->name, v2->name);
+}
+
 struct parse_result_s parse(FILE *f, const char *fname)
 {
 	size_t i, j;
@@ -399,7 +410,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 
 		for (i = j; fname[i] != '\0' && fname[i] != '.'
 				&& i - j < r.hkey_size; i++) {
-			if (!isalnum(fname[i])) {
+			if (!isalnum(fname[i]) && fname[i] != '_') {
 				fprintf(stderr, "\e[1m%s:\e[0m ", fname);
 				ERR("no function suffix specified, and could not generate one");
 			}
@@ -416,6 +427,9 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		fprintf(stderr, "\e[1m%s:\e[0m ", fname);
 		WARN("no function suffix specified. using `%s`...", r.fun_suf);
 	}
+
+	HASH_SORT(r.deftypes, sub_sort_deftypes);
+	HASH_SORT(r.vars, sub_sort_vars);
 
 	return r;
 }
