@@ -60,48 +60,41 @@ static enum parse_type_e sub_parse_type(void)
 			ERR_AT(l, c, "invalid type `%s`", t.val);
 	}
 
-	if (!strcmp(t.val, "bool") || !strcmp(t.val, "boolean"))
+	if (!strcmp(t.val, "bool"))
 		return type;
 
 	if (!strcmp(t.val, "string"))
 		return type + PARSE_TYPE_STRING;
 
-	if (!strcmp(t.val, "char")) {
-		t = tok_get();
+	if (!strcmp(t.val, "id"))
+		return type + PARSE_TYPE_ID;
 
-		ERR_END(t);
-
-		if (t.type != TOK_ASTERISK) {
-			if (type >= PARSE_TYPE_HASH_BOOL)
-				ERR_AT(l, c, "invalid type `hash char %s`", t.val);
-			else if (type >= PARSE_TYPE_ARRAY_BOOL)
-				ERR_AT(l, c, "invalid type `array char %s`", t.val);
-			else
-				ERR_AT(l, c, "invalid type `char %s`", t.val);
-		}
-
-		return type + PARSE_TYPE_STRING;
-	}
-
-	if (!strcmp(t.val, "int") || !strcmp(t.val, "integer"))
+	if (!strcmp(t.val, "int"))
 		return type + PARSE_TYPE_INT;
+
+	if (!strcmp(t.val, "intl"))
+		return type + PARSE_TYPE_INTL;
+
+	if (!strcmp(t.val, "intll"))
+		return type + PARSE_TYPE_INTLL;
 
 	if (!strcmp(t.val, "uint"))
 		return type + PARSE_TYPE_UINT;
 
-	if (!strcmp(t.val, "unsigned")) {
-		l = t.line;
-		c = t.col;
-		t = tok_get();
+	if (!strcmp(t.val, "uintl"))
+		return type + PARSE_TYPE_UINTL;
 
-		if (t.type != TOK_ID
-				|| (strcmp(t.val, "int") && strcmp(t.val, "integer"))
-		) {
-			tok_unget(t);
-		}
+	if (!strcmp(t.val, "uintll"))
+		return type + PARSE_TYPE_UINTLL;
 
-		return type + PARSE_TYPE_UINT;
-	}
+	if (!strcmp(t.val, "float"))
+		return type + PARSE_TYPE_FLOAT;
+
+	if (!strcmp(t.val, "double"))
+		return type + PARSE_TYPE_DOUBLE;
+
+	if (!strcmp(t.val, "doublel"))
+		return type + PARSE_TYPE_DOUBLEL;
 
 	tok_unget(t);
 
@@ -126,6 +119,21 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 	if (t.type != TOK_ID) {
 		ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
 				t.val, (dt.is_union ? "union" : "struct"));
+	}
+
+	if (
+			!strcmp(t.val, "hash") || !strcmp(t.val, "array") ||
+			!strcmp(t.val, "bool") ||
+			!strcmp(t.val, "string") || !strcmp(t.val, "id") ||
+			!strcmp(t.val, "int") || !strcmp(t.val, "intl") ||
+			!strcmp(t.val, "intll") ||
+			!strcmp(t.val, "uint") || !strcmp(t.val, "uintl") ||
+			!strcmp(t.val, "uintll") ||
+			!strcmp(t.val, "float") || !strcmp(t.val, "double") ||
+			!strcmp(t.val, "doublell")
+	) {
+		ERR_AT(dt.line, dt.col,
+				"defined type conflicts with builtin type `%s`", t.val);
 	}
 
 	HASH_FIND_STR(r.deftypes, t.val, dtp);
@@ -358,7 +366,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct parse_deftype_s *d;
 
 	r.hkey_size = 16;
-	strcpy(r.hkey_name, "id");
+	strcpy(r.hkey_name, "key");
 	r.hkey_name_seen = false;
 	r.hkey_size_seen = false;
 	r.fun_suf_seen = false;
