@@ -59,31 +59,6 @@ int main(int argc, char **argv)
 	print_tree(&ar.var_tree);
 	puts("");
 
-	if (ar.uses_bool)
-		puts("bool");
-	if (ar.uses_string)
-		puts("string");
-	if (ar.uses_id)
-		puts("id");
-	if (ar.uses_int)
-		puts("int");
-	if (ar.uses_intl)
-		puts("intl");
-	if (ar.uses_intll)
-		puts("intll");
-	if (ar.uses_uint)
-		puts("uint");
-	if (ar.uses_uintl)
-		puts("uintl");
-	if (ar.uses_uintll)
-		puts("uintll");
-	if (ar.uses_float)
-		puts("float");
-	if (ar.uses_double)
-		puts("double");
-	if (ar.uses_doublel)
-		puts("doublel");
-
 	gen(fo, pr, ar);
 
 	if (fo != stdout)
