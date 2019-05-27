@@ -18,6 +18,8 @@ struct analyse_tree_s {
 };
 
 struct analyse_result_s {
+	bool uses_array;
+	bool uses_hash;
 	bool uses_bool;
 	bool uses_string;
 	bool uses_id;
@@ -30,6 +32,7 @@ struct analyse_result_s {
 	bool uses_float;
 	bool uses_double;
 	bool uses_doublel;
+	bool hash_types[PARSE_TYPE_ARRAY_BOOL];
 	struct analyse_tree_s deftype_tree;
 	struct analyse_tree_s var_tree;
 };

@@ -70,11 +70,9 @@ static void sub_match_op(void)
 		enum tok_type_e type;
 		char name[(32 < TOK_MAX_LEN ? 32 : TOK_MAX_LEN)];
 	} ops[] = {
-		{ true, TOK_OP_STRUCT,    ".struct"          },
-		{ true, TOK_OP_UNION,     ".union"           },
-		{ true, TOK_OP_HKEY_SIZE, ".hash-key-size"   },
-		{ true, TOK_OP_HKEY_NAME, ".hash-key-name"   },
-		{ true, TOK_OP_FUN_SUF,   ".function-suffix" },
+		{ true, TOK_OP_SUFFIX,    ".suffix" },
+		{ true, TOK_OP_STRUCT,    ".struct" },
+		{ true, TOK_OP_UNION,     ".union"  },
 	};
 	unsigned i, j;
 	bool again;
@@ -97,7 +95,7 @@ static void sub_match_op(void)
 		val[vlen] = c;
 		vlen++;
 
-		for (j = 0; j < 5; j++) {
+		for (j = 0; j < 3; j++) {
 			if (!ops[j].possible)
 				continue;
 

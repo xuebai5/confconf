@@ -7,6 +7,8 @@
 struct analyse_result_s analyse(struct parse_result_s pr)
 {
 	struct analyse_result_s ar = {
+		.uses_array = false,
+		.uses_hash = false,
 		.uses_bool = false,
 		.uses_string = false,
 		.uses_id = false,
@@ -20,8 +22,8 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 		.uses_double = false,
 		.uses_doublel = false,
 	};
-	struct parse_deftype_s *dtp, *tmp_dtp;
-	struct parse_var_s *vtp, *tmp_vtp;
+	struct parse_deftype_s *dcur, *dtmp;
+	struct parse_var_s *vcur, *vtmp;
 	struct analyse_tree_s *cur;
 	unsigned i;
 
@@ -29,17 +31,17 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 	ar.deftype_tree.is_terminal = false;
 
 	if (pr.deftypes != NULL) {
-		HASH_ITER(hh, pr.deftypes, dtp, tmp_dtp) {
+		HASH_ITER(hh, pr.deftypes, dcur, dtmp) {
 			cur = &(ar.deftype_tree);
 
 			/* walk down the tree, creating nodes when necessary */
-			for (i = 0; dtp->name[i] != '\0'; i++) {
+			for (i = 0; dcur->name[i] != '\0'; i++) {
 				if (cur->branch_count == 0
 						|| cur->branch_chars[cur->branch_count - 1]
-						!= dtp->name[i]
+						!= dcur->name[i]
 				) {
 					cur->branch_count++;
-					cur->branch_chars[cur->branch_count - 1] = dtp->name[i];
+					cur->branch_chars[cur->branch_count - 1] = dcur->name[i];
 					TRYALLOC(cur->branches[cur->branch_count - 1], 1);
 					cur = cur->branches[cur->branch_count - 1];
 					cur->branch_count = 0;
@@ -50,7 +52,7 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 			}
 
 			cur->is_terminal = true;
-			strcpy(cur->name, dtp->name);
+			strcpy(cur->name, dcur->name);
 		}
 	}
 
@@ -58,17 +60,17 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 	ar.var_tree.is_terminal = false;
 
 	if (pr.vars != NULL) {
-		HASH_ITER(hh, pr.vars, vtp, tmp_vtp) {
+		HASH_ITER(hh, pr.vars, vcur, vtmp) {
 			cur = &(ar.var_tree);
 
 			/* walk down the tree, creating nodes when necessary */
-			for (i = 0; vtp->name[i] != '\0'; i++) {
+			for (i = 0; vcur->name[i] != '\0'; i++) {
 				if (cur->branch_count == 0
 						|| cur->branch_chars[cur->branch_count - 1]
-						!= vtp->name[i]
+						!= vcur->name[i]
 				) {
 					cur->branch_count++;
-					cur->branch_chars[cur->branch_count - 1] = vtp->name[i];
+					cur->branch_chars[cur->branch_count - 1] = vcur->name[i];
 					TRYALLOC(cur->branches[cur->branch_count - 1], 1);
 					cur = cur->branches[cur->branch_count - 1];
 					cur->branch_count = 0;
@@ -79,14 +81,25 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 			}
 
 			cur->is_terminal = true;
-			strcpy(cur->name, vtp->name);
+			strcpy(cur->name, vcur->name);
 		}
 	}
 
-	HASH_ITER(hh, pr.vars, vtp, tmp_vtp) {
-		switch (vtp->type
-				- (PARSE_TYPE_ARRAY_BOOL * (vtp->type >= PARSE_TYPE_ARRAY_BOOL))
-				- (PARSE_TYPE_ARRAY_BOOL * (vtp->type >= PARSE_TYPE_HASH_BOOL))
+	for (i = 0; i < PARSE_TYPE_ARRAY_BOOL; i++)
+		ar.hash_types[i] = false;
+
+	HASH_ITER(hh, pr.vars, vcur, vtmp) {
+		if (vcur->type >= PARSE_TYPE_HASH_BOOL) {
+			ar.uses_hash = true;
+			ar.uses_id = true;
+			ar.hash_types[vcur->type - PARSE_TYPE_HASH_BOOL] = true;
+		} else if (vcur->type >= PARSE_TYPE_ARRAY_BOOL) {
+			ar.uses_array = true;
+		}
+
+		switch (vcur->type
+			- (PARSE_TYPE_ARRAY_BOOL * (vcur->type >= PARSE_TYPE_ARRAY_BOOL))
+			- (PARSE_TYPE_ARRAY_BOOL * (vcur->type >= PARSE_TYPE_HASH_BOOL))
 		) {
 		case PARSE_TYPE_BOOL:
 			ar.uses_bool = true;
@@ -125,16 +138,16 @@ struct analyse_result_s analyse(struct parse_result_s pr)
 			ar.uses_doublel = true;
 			break;
 		default:
-			HASH_FIND_STR(pr.deftypes, vtp->deftype_name, dtp);
-			assert(dtp != NULL);
-			for (i = 0; i < dtp->member_list_len; i++) {
-				switch (dtp->member_type_list[i]
-						- (PARSE_TYPE_ARRAY_BOOL *
-							(dtp->member_type_list[i] >= PARSE_TYPE_ARRAY_BOOL)
-						)
-						- (PARSE_TYPE_ARRAY_BOOL *
-							(dtp->member_type_list[i] >= PARSE_TYPE_HASH_BOOL)
-						)
+			HASH_FIND_STR(pr.deftypes, vcur->deftype_name, dcur);
+			assert(dcur != NULL);
+			for (i = 0; i < dcur->member_list_len; i++) {
+				switch (dcur->member_type_list[i]
+					- (PARSE_TYPE_ARRAY_BOOL *
+						(dcur->member_type_list[i] >= PARSE_TYPE_ARRAY_BOOL)
+					)
+					- (PARSE_TYPE_ARRAY_BOOL *
+						(dcur->member_type_list[i] >= PARSE_TYPE_HASH_BOOL)
+					)
 				) {
 				case PARSE_TYPE_BOOL:
 					ar.uses_bool = true;

@@ -172,10 +172,11 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 
 		type = sub_parse_type();
 
-		if (type == PARSE_TYPE_DEFTYPE
-				|| type == PARSE_TYPE_ARRAY_DEFTYPE
-				|| type == PARSE_TYPE_HASH_DEFTYPE
-		) {
+		if (type >= PARSE_TYPE_ARRAY_BOOL) {
+			ERR_AT(t.line, t.col, "defined types may not contain arrays or hashes");
+		}
+
+		if (type == PARSE_TYPE_DEFTYPE) {
 			t = tok_get();
 			ERR_AT(t.line, t.col, "defined types may not contain other defined types");
 		}
@@ -231,11 +232,11 @@ static bool sub_parse_op(void)
 		sub_parse_deftype(t.line, t.col, true);
 		return true;
 
-	case TOK_OP_FUN_SUF:
-		if (r.fun_suf_seen) {
+	case TOK_OP_SUFFIX:
+		if (r.suffix_seen) {
 			WARN_AT(t.line, t.col,
 					"function-suffix redefined (previous value was `%s`)",
-					r.fun_suf);
+					r.suffix);
 		}
 
 		t = tok_get();
@@ -243,52 +244,9 @@ static bool sub_parse_op(void)
 		if (t.type != TOK_ID)
 			ERR_AT(t.line, t.col, "invalid function-suffix `%s`", t.val);
 
-		strcpy(r.fun_suf, t.val);
+		strcpy(r.suffix, t.val);
 
-		r.fun_suf_seen = true;
-
-		return true;
-
-	case TOK_OP_HKEY_SIZE:
-		if (r.hkey_size_seen) {
-			WARN_AT(t.line, t.col,
-					"hkey_size redefined (previous value was %lu)",
-					r.hkey_size);
-		}
-
-		t = tok_get();
-		ERR_END(t);
-		if (t.type != TOK_UINT)
-			ERR_AT(t.line, t.col, "invalid hkey_size `%s`", t.val);
-
-		errno = EILSEQ;
-		r.hkey_size = strtoul(t.val, NULL, 10);
-
-		if (errno == ERANGE)
-			ERR_AT(t.line, t.col, "hkey_size `%s` too large", t.val);
-
-		if (r.hkey_size == 0)
-			ERR_AT(t.line, t.col, "hkey_size cannot be 0");
-
-		r.hkey_size_seen = true;
-
-		return true;
-
-	case TOK_OP_HKEY_NAME:
-		if (r.hkey_name_seen) {
-			ERR_AT(t.line, t.col,
-					"hkey_name redefined (previous value was `%s`)",
-					r.hkey_name);
-		}
-
-		t = tok_get();
-		ERR_END(t);
-		if (t.type != TOK_ID)
-			ERR_AT(t.line, t.col, "invalid hkey_name `%s`", t.val);
-
-		strcpy(r.hkey_name, t.val);
-
-		r.hkey_name_seen = true;
+		r.suffix_seen = true;
 
 		return true;
 
@@ -374,11 +332,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct parse_var_s *vcur, *vtmp;
 	struct parse_deftype_s *dcur, *dtmp;
 
-	r.hkey_size = 16;
-	strcpy(r.hkey_name, "key");
-	r.hkey_name_seen = false;
-	r.hkey_size_seen = false;
-	r.fun_suf_seen = false;
+	r.suffix_seen = false;
 	r.deftypes = NULL;
 	r.vars = NULL;
 	curfname = fname;
@@ -420,12 +374,12 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	HASH_ITER(hh, r.deftypes, dcur, dtmp) {
 		if (!dcur->is_used) {
 			WARN_AT(dcur->line, dcur->col,
-					"struct `%s` defined but not used",
+					"type `%s` defined but not used",
 					dcur->name);
 		}
 	}
 
-	if (!r.fun_suf_seen) {
+	if (!r.suffix_seen) {
 
 		j = 0;
 
@@ -434,24 +388,23 @@ struct parse_result_s parse(FILE *f, const char *fname)
 
 		j = i + (fname[i] == '/' || fname[i] == '\\');
 
-		for (i = j; fname[i] != '\0' && fname[i] != '.'
-				&& i - j < r.hkey_size; i++) {
+		for (i = j; fname[i] != '\0' && fname[i] != '.'; i++) {
 			if (!isalnum(fname[i]) && fname[i] != '_') {
 				fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 				ERR("no function suffix specified, and could not generate one");
 			}
-			r.fun_suf[i - j] = fname[i];
+			r.suffix[i - j] = fname[i];
 		}
 
-		r.fun_suf[i - j] = '\0';
+		r.suffix[i - j] = '\0';
 
-		if (r.fun_suf[0] == '\0') {
+		if (r.suffix[0] == '\0') {
 			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 			ERR("no function suffix specified, and could not generate one");
 		}
 
 		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
-		WARN("no function suffix specified. using `%s`...", r.fun_suf);
+		WARN("no function suffix specified. using `%s`...", r.suffix);
 	}
 
 	HASH_SORT(r.deftypes, sub_sort_deftypes);

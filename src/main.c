@@ -29,7 +29,6 @@ int main(int argc, char **argv)
 	FILE *fo = stdout;
 	FILE *fi = stdin;
 	const char *finame = "stdin";
-	const char *foname;
 	struct parse_result_s pr;
 	struct analyse_result_s ar;
 
@@ -42,9 +41,8 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_outfile_str() != NULL) {
-		foname = opt_infile_str();
-		fo = fopen(foname, "w");
-		TRY(fo != NULL, "could not write to file `%s`", foname);
+		fo = fopen(opt_outfile_str(), "w");
+		TRY(fo != NULL, "could not write to file `%s`", opt_outfile_str());
 	}
 
 	pr = parse(fi, finame);

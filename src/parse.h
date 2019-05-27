@@ -78,12 +78,8 @@ struct parse_var_s {
 };
 
 struct parse_result_s {
-	unsigned long hkey_size;
-	bool hkey_size_seen;
-	char hkey_name[TOK_MAX_LEN];
-	bool hkey_name_seen;
-	char fun_suf[TOK_MAX_LEN];
-	bool fun_suf_seen;
+	char suffix[TOK_MAX_LEN];
+	bool suffix_seen;
 	struct parse_deftype_s *deftypes;
 	struct parse_var_s *vars;
 };
