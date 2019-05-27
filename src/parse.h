@@ -9,6 +9,8 @@
 
 #define PARSE_DEFTYPE_MAX_LEN 32
 
+/* very important these stay in order.
+ * things like ">= PARSE_TYPE_ARRAY_BOOL" used */
 enum parse_type_e {
 	PARSE_TYPE_BOOL          = 0,
 	PARSE_TYPE_STRING        = 1,
@@ -57,6 +59,7 @@ struct parse_deftype_s {
 	char name[TOK_MAX_LEN];
 	size_t line;
 	size_t col;
+	bool is_used;
 	bool is_union;
 	unsigned member_list_len;
 	enum parse_type_e member_type_list[PARSE_DEFTYPE_MAX_LEN];

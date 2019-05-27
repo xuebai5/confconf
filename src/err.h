@@ -6,14 +6,14 @@
 
 #define ERR(...) \
 	do { \
-		fprintf(stderr, "\e[1;31merror:\e[0m " __VA_ARGS__); \
+		fprintf(stderr, "\x1B[1;31merror:\x1B[0m " __VA_ARGS__); \
 		fprintf(stderr, "\n"); \
 		exit(EXIT_FAILURE); \
 	} while (0)
 
 #define WARN(...) \
 	do { \
-		fprintf(stderr, "\e[1;35mwarning:\e[0m " __VA_ARGS__); \
+		fprintf(stderr, "\x1B[1;35mwarning:\x1B[0m " __VA_ARGS__); \
 		fprintf(stderr, "\n"); \
 	} while (0)
 

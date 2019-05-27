@@ -7,12 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 static const char *curfname;
 
 #define ERR_AT(l, c, ...) \
 	do { \
-		fprintf(stderr, "\e[1m%s:%zu:%zu:\e[0m ", \
+		fprintf(stderr, "\x1B[1m%s:%zu:%zu:\x1B[0m ", \
 				curfname, (l), (c)); \
 		ERR(__VA_ARGS__); \
 	} while (0)
@@ -25,7 +26,7 @@ static const char *curfname;
 
 #define WARN_AT(l, c, ...) \
 	do { \
-		fprintf(stderr, "\e[1m%s:%zu:%zu:\e[0m ", \
+		fprintf(stderr, "\x1B[1m%s:%zu:%zu:\x1B[0m ", \
 				curfname, (l), (c)); \
 		WARN(__VA_ARGS__); \
 	} while (0)
@@ -109,6 +110,7 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 	struct parse_deftype_s dt = {
 		.line = line,
 		.col = col,
+		.is_used = false,
 		.is_union = is_union,
 		.member_list_len = 0,
 	};
@@ -259,7 +261,14 @@ static bool sub_parse_op(void)
 		if (t.type != TOK_UINT)
 			ERR_AT(t.line, t.col, "invalid hkey_size `%s`", t.val);
 
+		errno = EILSEQ;
 		r.hkey_size = strtoul(t.val, NULL, 10);
+
+		if (errno == ERANGE)
+			ERR_AT(t.line, t.col, "hkey_size `%s` too large", t.val);
+
+		if (r.hkey_size == 0)
+			ERR_AT(t.line, t.col, "hkey_size cannot be 0");
 
 		r.hkey_size_seen = true;
 
@@ -363,7 +372,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct tok_s t;
 
 	struct parse_var_s *vcur, *vtmp;
-	struct parse_deftype_s *d;
+	struct parse_deftype_s *dcur, *dtmp;
 
 	r.hkey_size = 16;
 	strcpy(r.hkey_name, "key");
@@ -387,7 +396,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	}
 
 	if (r.vars == NULL) {
-		fprintf(stderr, "\e[1m%s:\e[0m ", fname);
+		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 		ERR("config must specify at fewest one variable rule");
 	}
 
@@ -396,14 +405,23 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		case PARSE_TYPE_DEFTYPE:
 		case PARSE_TYPE_ARRAY_DEFTYPE:
 		case PARSE_TYPE_HASH_DEFTYPE:
-			HASH_FIND_STR(r.deftypes, vcur->deftype_name, d);
-			if (d == NULL) {
+			HASH_FIND_STR(r.deftypes, vcur->deftype_name, dcur);
+			if (dcur == NULL) {
 				ERR_AT(vcur->line, vcur->col,
 						"rule for variable `%s` references undefined type `%s`",
 						vcur->name, vcur->deftype_name);
 			}
+			dcur->is_used = true;
 		default:
 			continue;
+		}
+	}
+
+	HASH_ITER(hh, r.deftypes, dcur, dtmp) {
+		if (!dcur->is_used) {
+			WARN_AT(dcur->line, dcur->col,
+					"struct `%s` defined but not used",
+					dcur->name);
 		}
 	}
 
@@ -419,7 +437,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		for (i = j; fname[i] != '\0' && fname[i] != '.'
 				&& i - j < r.hkey_size; i++) {
 			if (!isalnum(fname[i]) && fname[i] != '_') {
-				fprintf(stderr, "\e[1m%s:\e[0m ", fname);
+				fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 				ERR("no function suffix specified, and could not generate one");
 			}
 			r.fun_suf[i - j] = fname[i];
@@ -428,11 +446,11 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		r.fun_suf[i - j] = '\0';
 
 		if (r.fun_suf[0] == '\0') {
-			fprintf(stderr, "\e[1m%s:\e[0m ", fname);
+			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 			ERR("no function suffix specified, and could not generate one");
 		}
 
-		fprintf(stderr, "\e[1m%s:\e[0m ", fname);
+		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 		WARN("no function suffix specified. using `%s`...", r.fun_suf);
 	}
 
