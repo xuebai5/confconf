@@ -11,7 +11,7 @@ objects=`find $srcdir -type f -name '*.c' | sed -e "s/$srcdir\/\(.*\).c/\1.o/"`
 
 cc='cc'
 cflags='-Wall -O2'
-cflagsdebug='-Wall -ggdb3 -O0 -DDEBUG'
+cflagsdebug='-std=c99 -Wall -pedantic -ggdb3 -O0 -DDEBUG'
 prefix='/usr/local'
 
 
@@ -27,6 +27,10 @@ if [ ! `2>/dev/null which gcc` ]; then
 		return 1
 	fi
 	dgen='clang'
+fi
+
+if [ -f 'Makefile' ]; then
+	make clean
 fi
 
 {
