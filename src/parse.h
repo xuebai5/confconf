@@ -3,7 +3,7 @@
 
 #include "tok.h"
 
-#include <uthash.h>
+#include "../reqs/uthash/include/uthash.h"
 
 #include <stdbool.h>
 
