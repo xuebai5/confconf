@@ -50,13 +50,13 @@ void opt_parse(int argc, char **argv)
 const char* opt_infile_str(void)
 {
 	return (options[2].was_seen
-			? options[2].val_string
+			? options[2].val.v_string
 			: NULL);
 }
 
 const char* opt_outfile_str(void)
 {
 	return (options[3].was_seen
-			? options[3].val_string
+			? options[3].val.v_string
 			: NULL);
 }
