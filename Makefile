@@ -2,7 +2,7 @@
 .SUFFIXES:
 
 CC = cc
-CFLAGS = -Wall -O2
+CFLAGS = -O2
 CFLAGSDEBUG = -std=c99 -Wall -pedantic -ggdb3 -O0 -DDEBUG
 PREFIX = /usr/local
 
