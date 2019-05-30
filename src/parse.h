@@ -55,12 +55,18 @@ enum parse_type_e {
 	PARSE_TYPE_HASH_DEFTYPE  = 38,
 };
 
+enum parse_deftype_e {
+	PARSE_DEFTYPE_STRUCT,
+	PARSE_DEFTYPE_UNION,
+	PARSE_DEFTYPE_ENUM,
+};
+
 struct parse_deftype_s {
 	char name[TOK_MAX_LEN];
+	enum parse_deftype_e type;
 	size_t line;
 	size_t col;
 	bool is_used;
-	bool is_union;
 	bool is_in_array;
 	bool is_in_hash;
 	unsigned member_list_len;

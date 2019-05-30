@@ -18,10 +18,12 @@ static const char *curfname;
 		ERR(__VA_ARGS__); \
 	} while (0)
 
-#define ERR_END(t) \
+#define ERR_END(t, m) \
 	do { \
-		if ((t).type == TOK_END) \
-			ERR_AT((t).line, (t).col, "unexpected end of file"); \
+		if ((t).type == TOK_END) { \
+			ERR_AT((t).line, (t).col, "unexpected end of file (expected %s)", \
+					(m) ); \
+		} \
 	} while (0)
 
 #define WARN_AT(l, c, ...) \
@@ -50,7 +52,7 @@ static enum parse_type_e sub_parse_type(void)
 		t = tok_get();
 	}
 
-	ERR_END(t);
+	ERR_END(t, "type");
 
 	if (t.type != TOK_ID) {
 		if (type >= PARSE_TYPE_HASH_BOOL)
@@ -102,7 +104,8 @@ static enum parse_type_e sub_parse_type(void)
 	return type + PARSE_TYPE_DEFTYPE;
 }
 
-static void sub_parse_deftype(size_t line, size_t col, bool is_union)
+static void sub_parse_deftype(size_t line, size_t col,
+		enum parse_deftype_e dtype)
 {
 	struct tok_s t;
 	enum parse_type_e type;
@@ -111,7 +114,7 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 		.line = line,
 		.col = col,
 		.is_used = false,
-		.is_union = is_union,
+		.type = dtype,
 		.is_in_array = false,
 		.is_in_hash = false,
 		.member_list_len = 0,
@@ -119,13 +122,24 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 	unsigned i, j;
 
 	t = tok_get();
-	ERR_END(t);
+	ERR_END(t,
+			(dt.type == PARSE_DEFTYPE_UNION ? "union name" :
+				(dt.type == PARSE_DEFTYPE_STRUCT ?
+				 "struct name" : "enum name"
+				)
+			)
+	);
 	if (t.type != TOK_ID) {
-		ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
-				t.val, (dt.is_union ? "union" : "struct"));
+			ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
+					t.val,
+					(dt.type == PARSE_DEFTYPE_UNION ? "union"
+						: (dt.type == PARSE_DEFTYPE_STRUCT ? "struct" : "enum")
+					)
+			);
 	}
 
 	if (
+			dt.type != PARSE_DEFTYPE_ENUM && (
 			!strcmp(t.val, "hash") || !strcmp(t.val, "array") ||
 			!strcmp(t.val, "bool") ||
 			!strcmp(t.val, "string") || !strcmp(t.val, "id") ||
@@ -135,6 +149,7 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 			!strcmp(t.val, "uintll") ||
 			!strcmp(t.val, "float") || !strcmp(t.val, "double") ||
 			!strcmp(t.val, "doublell")
+			)
 	) {
 		ERR_AT(dt.line, dt.col,
 				"defined type conflicts with builtin type `%s`", t.val);
@@ -150,49 +165,86 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 	strcpy(dt.name, t.val);
 
 	t = tok_get();
-	ERR_END(t);
+	ERR_END(t, "`{`");
 	if (t.type != TOK_LBRACE)
 		ERR_AT(t.line, t.col, "unexpected token `%s` (expected `{`)", t.val);
 
 	while (true) {
 		if (dt.member_list_len == PARSE_DEFTYPE_MAX_LEN) {
-			ERR_AT(dt.line, dt.col, "%s %s has too many members",
-					(dt.is_union ? "union" : "struct"), dt.name);
+			ERR_AT(dt.line, dt.col, "%s %s has too many %s",
+					(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
+						 (dt.type == PARSE_DEFTYPE_UNION ?
+						  "union" : "struct")
+					),
+					dt.name,
+					(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
+			);
 		}
 
 		t = tok_get();
 		if (t.type == TOK_RBRACE) {
 			if (dt.member_list_len < 2) {
-				ERR_AT(dt.line, dt.col, "%s `%s` must specify at fewest two members",
-						(dt.is_union ? "union" : "struct"), dt.name);
+				ERR_AT(dt.line, dt.col, "%s `%s` must specify at fewest two %s",
+						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
+							 (dt.type == PARSE_DEFTYPE_UNION ?
+							  "union" : "struct")
+						),
+						dt.name,
+						(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
+				);
 			}
 
 			break;
 		}
 
-		tok_unget(t);
+		if (dt.type != PARSE_DEFTYPE_ENUM) {
+			tok_unget(t);
 
-		type = sub_parse_type();
+			ERR_END(t, "type or `}`");
 
-		if (type >= PARSE_TYPE_ARRAY_BOOL) {
-			ERR_AT(t.line, t.col, "defined types may not contain arrays or hashes");
-		}
+			type = sub_parse_type();
 
-		if (type == PARSE_TYPE_DEFTYPE) {
-			t = tok_get();
-			ERR_AT(t.line, t.col, "defined types may not contain other defined types");
-		}
+			if (type >= PARSE_TYPE_ARRAY_BOOL) {
+				ERR_AT(t.line, t.col,
+						"defined types may not contain arrays or hashes");
+			}
+			/*  */
 
-		t = tok_get();
-		ERR_END(t);
-		if (t.type != TOK_ID) {
-			if (t.type == TOK_RBRACE || t.type == TOK_COMMA) {
-				ERR_AT(t.line, t.col, "missing member name in %s `%s'",
-						(dt.is_union ? "union" : "struct"), dt.name);
+			if (type == PARSE_TYPE_DEFTYPE) {
+				t = tok_get();
+				ERR_AT(t.line, t.col,
+						"defined types may not contain other defined types");
 			}
 
-			ERR_AT(t.line, t.col, "bad %s member name `%s`",
-					(dt.is_union ? "union" : "struct"), t.val);
+			t = tok_get();
+		}
+
+		ERR_END(t, (dt.type == PARSE_DEFTYPE_ENUM ? "id or `}`"
+					: "member name"));
+
+		if (t.type != TOK_ID) {
+			if (t.type == TOK_RBRACE || t.type == TOK_COMMA) {
+				ERR_AT(t.line, t.col, "missing %s in %s `%s'",
+						(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
+						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
+						 (dt.type == PARSE_DEFTYPE_UNION ?
+						  "union" : "struct"
+						 )
+						),
+						dt.name
+				);
+			}
+
+			ERR_AT(t.line, t.col, "bad %s `%s` in %s %s",
+						(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
+						t.val,
+						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
+						 (dt.type == PARSE_DEFTYPE_UNION ?
+						  "union" : "struct"
+						 )
+						),
+						dt.name
+			);
 		}
 
 		strcpy(dt.member_name_list[dt.member_list_len], t.val);
@@ -207,9 +259,16 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 	for (i = 0; i < dt.member_list_len; i++) {
 		for (j = i + 1; j < dt.member_list_len; j++) {
 			if (!strcmp(dt.member_name_list[i], dt.member_name_list[j]) ) {
-				ERR_AT(dt.line, dt.col, "%s `%s` contains multiple members named %s",
-						(dt.is_union ? "union" : "struct"), dt.name,
-						dt.member_name_list[i]);
+				ERR_AT(dt.line, dt.col,
+						"%s `%s` contains multiple %s named `%s`",
+						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
+						 (dt.type == PARSE_DEFTYPE_UNION ?
+						  "union" : "struct")
+						),
+						dt.name,
+						(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members"),
+						dt.member_name_list[i]
+				);
 			}
 
 		}
@@ -227,24 +286,26 @@ static bool sub_parse_op(void)
 
 	switch (t.type) {
 	case TOK_OP_STRUCT:
-		sub_parse_deftype(t.line, t.col, false);
+		sub_parse_deftype(t.line, t.col, PARSE_DEFTYPE_STRUCT);
 		return true;
-
 	case TOK_OP_UNION:
-		sub_parse_deftype(t.line, t.col, true);
+		sub_parse_deftype(t.line, t.col, PARSE_DEFTYPE_UNION);
+		return true;
+	case TOK_OP_ENUM:
+		sub_parse_deftype(t.line, t.col, PARSE_DEFTYPE_ENUM);
 		return true;
 
 	case TOK_OP_SUFFIX:
 		if (r.suffix_seen) {
 			WARN_AT(t.line, t.col,
-					"function-suffix redefined (previous value was `%s`)",
+					"naming suffix redefined (previous value was `%s`)",
 					r.suffix);
 		}
 
 		t = tok_get();
-		ERR_END(t);
+		ERR_END(t, "naming suffix");
 		if (t.type != TOK_ID)
-			ERR_AT(t.line, t.col, "invalid function-suffix `%s`", t.val);
+			ERR_AT(t.line, t.col, "invalid naming suffix `%s`", t.val);
 
 		strcpy(r.suffix, t.val);
 
@@ -278,7 +339,7 @@ static bool sub_parse_rule(void)
 	v.col = t.col;
 
 	t = tok_get();
-	ERR_END(t);
+	ERR_END(t, "variable name");
 	if (t.type != TOK_ID) {
 		ERR_AT(t.line, t.col,
 				"unexpected token `%s`, (expected variable name)", t.val);
@@ -294,7 +355,7 @@ static bool sub_parse_rule(void)
 	strcpy(v.name, t.val);
 
 	t = tok_get();
-	ERR_END(t);
+	ERR_END(t, "`=`");
 	if (t.type != TOK_EQUAL)
 		ERR_AT(t.line, t.col, "unexpected token `%s`, (expected `=`)", t.val);
 

@@ -67,15 +67,27 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 			pr.suffix, pr.suffix
 		   );
 
-	/* structs */
+	/* types */
 	HASH_ITER(hh, pr.deftypes, dcur, dtmp) {
 		if (!dcur->is_used)
 			continue;
 
-		fprintf(f, "struct confconf_type_%s_%s {\n",
+		fprintf(f, "%s confconf_type_%s_%s {\n",
+				(dcur->type == PARSE_DEFTYPE_ENUM ? "enum" : 
+					 (dcur->type == PARSE_DEFTYPE_UNION ?
+					  "union" : "struct")
+				),
 				dcur->name, pr.suffix);
 
 		for (i = 0; i < dcur->member_list_len; i++) {
+			if (dcur->type == PARSE_DEFTYPE_ENUM) {
+				fprintf(f, "	CONFCONF_TYPE_%s_%s_%s,\n",
+						dcur->name,
+						dcur->member_name_list[i],
+						pr.suffix);
+				continue;
+			}
+
 			switch (dcur->member_type_list[i]) {
 			case PARSE_TYPE_BOOL:
 				fprintf(f, "	bool ");
@@ -160,7 +172,10 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 		HASH_ITER(hh, pr.deftypes, dcur, dtmp) {
 			if (dcur->is_used && dcur->is_in_hash) {
 				fprintf(f, "		%s confconf_type_%s_%s type_%s;\n",
-						(dcur->is_union ? "union" : "struct"),
+						(dcur->type == PARSE_DEFTYPE_ENUM ? "enum" : 
+							 (dcur->type == PARSE_DEFTYPE_UNION ?
+							  "union" : "struct")
+						),
 						dcur->name, pr.suffix, dcur->name);
 			}
 		}

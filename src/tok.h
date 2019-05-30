@@ -16,6 +16,7 @@ enum tok_type_e {
 	TOK_OP_SUFFIX,
 	TOK_OP_STRUCT,
 	TOK_OP_UNION,
+	TOK_OP_ENUM,
 	TOK_UINT,
 	TOK_ID,
 	TOK_UNKNWN,
