@@ -18,6 +18,13 @@ static const char *curfname;
 		ERR(__VA_ARGS__); \
 	} while (0)
 
+#define ERR_LONG(t) \
+	do { \
+		if ((t).type == TOK_LONG) { \
+			ERR_AT((t).line, (t).col, "token too long"); \
+		} \
+	} while (0)
+
 #define ERR_END(t, m) \
 	do { \
 		if ((t).type == TOK_END) { \
@@ -53,6 +60,7 @@ static enum parse_type_e sub_parse_type(void)
 	}
 
 	ERR_END(t, "type");
+	ERR_LONG(t);
 
 	if (t.type != TOK_ID) {
 		if (type >= PARSE_TYPE_HASH_BOOL)
@@ -129,6 +137,7 @@ static void sub_parse_deftype(size_t line, size_t col,
 				)
 			)
 	);
+	ERR_LONG(t);
 	if (t.type != TOK_ID) {
 			ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
 					t.val,
@@ -221,6 +230,7 @@ static void sub_parse_deftype(size_t line, size_t col,
 
 		ERR_END(t, (dt.type == PARSE_DEFTYPE_ENUM ? "id or `}`"
 					: "member name"));
+		ERR_LONG(t);
 
 		if (t.type != TOK_ID) {
 			if (t.type == TOK_RBRACE || t.type == TOK_COMMA) {
@@ -295,7 +305,7 @@ static bool sub_parse_op(void)
 		sub_parse_deftype(t.line, t.col, PARSE_DEFTYPE_ENUM);
 		return true;
 
-	case TOK_OP_SUFFIX:
+	case TOK_OP_NAMING_SUFFIX:
 		if (r.suffix_seen) {
 			WARN_AT(t.line, t.col,
 					"naming suffix redefined (previous value was `%s`)",
@@ -304,6 +314,7 @@ static bool sub_parse_op(void)
 
 		t = tok_get();
 		ERR_END(t, "naming suffix");
+		ERR_LONG(t);
 		if (t.type != TOK_ID)
 			ERR_AT(t.line, t.col, "invalid naming suffix `%s`", t.val);
 
@@ -312,6 +323,28 @@ static bool sub_parse_op(void)
 		r.suffix_seen = true;
 
 		return true;
+
+	case TOK_OP_UTHASH_LOCATION:
+		if (r.location_seen) {
+			WARN_AT(t.line, t.col,
+					"uthash location redefined (previous value was %s)",
+					r.location);
+		}
+
+		t = tok_get();
+		ERR_END(t, "uthash header");
+		ERR_LONG(t);
+		if (t.type != TOK_HEADER)
+			ERR_AT(t.line, t.col, "invalid uthash header `%s`", t.val);
+
+		strcpy(r.location, t.val);
+
+		r.location_seen = true;
+
+		return true;
+
+	case TOK_LONG:
+		ERR_LONG(t);
 
 	default:
 		tok_unget(t);
@@ -340,6 +373,7 @@ static bool sub_parse_rule(void)
 
 	t = tok_get();
 	ERR_END(t, "variable name");
+	ERR_LONG(t);
 	if (t.type != TOK_ID) {
 		ERR_AT(t.line, t.col,
 				"unexpected token `%s`, (expected variable name)", t.val);
@@ -396,6 +430,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct parse_deftype_s *dcur, *dtmp;
 
 	r.suffix_seen = false;
+	r.location_seen = false;
 	r.deftypes = NULL;
 	r.vars = NULL;
 	curfname = fname;
@@ -445,6 +480,12 @@ struct parse_result_s parse(FILE *f, const char *fname)
 					"type `%s` defined but not used",
 					dcur->name);
 		}
+	}
+
+	if (!r.location_seen) {
+		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
+		WARN("no uthash location header specified. using `<uthash.h>`");
+		strcpy(r.location, "<uthash.h>");
 	}
 
 	if (!r.suffix_seen) {

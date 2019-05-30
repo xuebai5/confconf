@@ -1,5 +1,6 @@
 #include "tok.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <ctype.h>
 
@@ -68,12 +69,13 @@ static void sub_match_op(void)
 	struct {
 		bool possible;
 		enum tok_type_e type;
-		char name[(32 < TOK_MAX_LEN ? 32 : TOK_MAX_LEN)];
+		char name[32];
 	} ops[] = {
-		{ true, TOK_OP_SUFFIX, ".suffix" },
 		{ true, TOK_OP_STRUCT, ".struct" },
 		{ true, TOK_OP_UNION,  ".union"  },
 		{ true, TOK_OP_ENUM,   ".enum"   },
+		{ true, TOK_OP_NAMING_SUFFIX,   ".naming-suffix"   },
+		{ true, TOK_OP_UTHASH_LOCATION, ".uthash-location" },
 	};
 	unsigned i, j;
 	bool again;
@@ -96,7 +98,7 @@ static void sub_match_op(void)
 		val[vlen] = c;
 		vlen++;
 
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < 5; j++) {
 			if (!ops[j].possible)
 				continue;
 
@@ -121,6 +123,14 @@ static void sub_match_op(void)
 				vlen++;
 				c = getc(curf);
 			} while (c != EOF && !isspace(c) && vlen < TOK_MAX_LEN - 1);
+
+			if (vlen + 2 == TOK_MAX_LEN) {
+				vlen = 0;
+				val[0] = '\0';
+				curtok.type = TOK_LONG;
+				return;
+			}
+
 			ungetc(c, curf);
 			val[vlen] = '\0';
 			curtok.type = TOK_UNKNWN;
@@ -136,11 +146,19 @@ static void sub_match_uint(void)
 	curtok.type = TOK_UINT;
 
 	while (true) {
+
 		c = getc(curf);
 
 		if (!isdigit(c)) {
 			ungetc(c, curf);
 			val[vlen] = '\0';
+			return;
+		}
+
+		if (vlen + 2 == TOK_MAX_LEN) {
+			vlen = 0;
+			val[0] = '\0';
+			curtok.type = TOK_LONG;
 			return;
 		}
 
@@ -164,9 +182,56 @@ static void sub_match_id(void)
 			return;
 		}
 
+		if (vlen + 2 == TOK_MAX_LEN) {
+			vlen = 0;
+			val[0] = '\0';
+			curtok.type = TOK_LONG;
+			return;
+		}
+
 		val[vlen] = c;
 		vlen++;
 	}
+}
+
+static void sub_match_header(void)
+{
+	int c, cend;
+
+	curtok.type = TOK_END;
+	
+	cend = (val[0] == '"' ? '"' : '>');
+
+	while (true) {
+		c = getc(curf);
+
+		if (c == EOF)
+			return;
+
+		if (c == '\n') {
+			val[vlen] = '\0';
+			curtok.type = TOK_UNKNWN;
+			return;
+		}
+
+		if (vlen + 2 == TOK_MAX_LEN) {
+			vlen = 0;
+			val[0] = '\0';
+			curtok.type = TOK_LONG;
+			return;
+		}
+
+		val[vlen] = c;
+		vlen++;
+
+		if (c == cend)
+			break;
+	}
+
+	curtok.type = TOK_HEADER;
+
+	val[vlen] = '\0';
+	vlen++;
 }
 
 void tok_reset(FILE *f)
@@ -182,11 +247,12 @@ struct tok_s tok_get(void)
 {
 	int c;
 
+	assert(TOK_MAX_LEN >= 32);
+
 	if (unget) {
 		unget = false;
 		return curtok;
-	}
-
+	} 
 	curtok.col += vlen;
 	vlen = 0;
 
@@ -256,6 +322,13 @@ struct tok_s tok_get(void)
 		return curtok;
 		
 	default:
+		if (c == '"' || c == '<') {
+			val[0] = c;
+			vlen = 1;
+			sub_match_header();
+			return curtok;
+		}
+
 		if (isdigit(c)) {
 			val[0] = c;
 			vlen = 1;

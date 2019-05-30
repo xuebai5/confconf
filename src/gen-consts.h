@@ -817,7 +817,7 @@ static const char shash[] =
 "#ifndef CONFCONF_HASH_H\n"
 "#define CONFCONF_HASH_H\n"
 "\n"
-"#include <uthash.h>\n"
+"#include %s\n"
 "\n"
 "#define CONFCONF_PRIV_GET_HASH_main(h, htmp, fun, mem) \\\n"
 "	do { \\\n"

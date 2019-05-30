@@ -86,8 +86,10 @@ struct parse_var_s {
 };
 
 struct parse_result_s {
-	char suffix[TOK_MAX_LEN];
 	bool suffix_seen;
+	char suffix[TOK_MAX_LEN];
+	bool location_seen;
+	char location[TOK_MAX_LEN];
 	struct parse_deftype_s *deftypes;
 	struct parse_var_s *vars;
 };

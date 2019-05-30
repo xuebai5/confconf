@@ -55,7 +55,7 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 		fprintf(f, sdoublel);
 
 	if (ar.uses_hash)
-		fprintf(f, shash);
+		fprintf(f, shash, pr.location);
 
 	/********
 	 * BODY *
@@ -140,11 +140,12 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 	/* hash */
 	if (ar.uses_hash) {
 		fprintf(f,
-				"#include <uthash.h>\n\n"
+				"#include %s\n\n"
 				"struct confconf_hash_%s {\n"
 				"	char *key;\n"
 				"	union {\n"
 				"%s%s%s%s%s%s%s%s%s%s%s",
+				pr.location,
 				pr.suffix,
 				(ar.uses_type[PARSE_TYPE_HASH_BOOL]
 				 ? "		bool b;\n" : ""),
