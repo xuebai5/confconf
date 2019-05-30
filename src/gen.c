@@ -31,29 +31,29 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 	fprintf(f, sheaderp1);
 	fprintf(f, sheaderp2);
 
-	/* built-in types */
-	if (ar.uses_bool)
+	if (ar.uses_type[PARSE_TYPE_BOOL])
 		fprintf(f, sbool);
-	if (ar.uses_string)
+	if (ar.uses_type[PARSE_TYPE_STRING])
 		fprintf(f, sstring);
-	if (ar.uses_int)
+	if (ar.uses_type[PARSE_TYPE_INT])
 		fprintf(f, sint);
-	if (ar.uses_intl)
+	if (ar.uses_type[PARSE_TYPE_INTL])
 		fprintf(f, sintl);
-	if (ar.uses_intll)
+	if (ar.uses_type[PARSE_TYPE_INTLL])
 		fprintf(f, sintll);
-	if (ar.uses_uint)
+	if (ar.uses_type[PARSE_TYPE_UINT])
 		fprintf(f, suint);
-	if (ar.uses_uintl)
+	if (ar.uses_type[PARSE_TYPE_UINTL])
 		fprintf(f, suintl);
-	if (ar.uses_uintll)
+	if (ar.uses_type[PARSE_TYPE_UINTLL])
 		fprintf(f, suintll);
-	if (ar.uses_float)
+	if (ar.uses_type[PARSE_TYPE_FLOAT])
 		fprintf(f, sfloat);
-	if (ar.uses_double)
+	if (ar.uses_type[PARSE_TYPE_DOUBLE])
 		fprintf(f, sdouble);
-	if (ar.uses_doublel)
+	if (ar.uses_type[PARSE_TYPE_DOUBLEL])
 		fprintf(f, sdoublel);
+
 	if (ar.uses_hash)
 		fprintf(f, shash);
 
@@ -69,6 +69,9 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 
 	/* structs */
 	HASH_ITER(hh, pr.deftypes, dcur, dtmp) {
+		if (!dcur->is_used)
+			continue;
+
 		fprintf(f, "struct confconf_type_%s_%s {\n",
 				dcur->name, pr.suffix);
 
@@ -131,20 +134,31 @@ void gen(FILE *f, struct parse_result_s pr, struct analyse_result_s ar)
 				"	union {\n"
 				"%s%s%s%s%s%s%s%s%s%s%s",
 				pr.suffix,
-				(ar.uses_bool    ? "		bool b;\n" : ""),
-				(ar.uses_string  ? "		char *s;\n" : ""),
-				(ar.uses_int     ? "		int i;\n" : ""),
-				(ar.uses_intl    ? "		long int il;\n" : ""),
-				(ar.uses_intll   ? "		long long int ill;\n" : ""),
-				(ar.uses_uint    ? "		unsigned u;\n" : ""),
-				(ar.uses_uintl   ? "		long unsigned ul;\n" : ""),
-				(ar.uses_uintll  ? "		long long unsigned ull;\n" : ""),
-				(ar.uses_float   ? "		float f;\n" : ""),
-				(ar.uses_double  ? "		double d;\n" : ""),
-				(ar.uses_doublel ? "		long double dl;\n" : "")
+				(ar.uses_type[PARSE_TYPE_HASH_BOOL]
+				 ? "		bool b;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_STRING]
+				 ? "		char *s;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_INT]
+				 ? "		int i;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_INTL]
+				 ? "		long int il;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_INTLL]
+				 ? "		long long int ill;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_UINT]
+				 ? "		unsigned u;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_UINTL]
+				 ? "		long unsigned ul;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_UINTLL]
+				 ? "		long long unsigned ull;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_FLOAT]
+				 ? "		float f;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_DOUBLE]
+				 ? "		double d;\n" : ""),
+				(ar.uses_type[PARSE_TYPE_HASH_DOUBLEL]
+				 ? "		long double dl;\n" : "")
 		);
 		HASH_ITER(hh, pr.deftypes, dcur, dtmp) {
-			if (dcur->is_used) {
+			if (dcur->is_used && dcur->is_in_hash) {
 				fprintf(f, "		%s confconf_type_%s_%s type_%s;\n",
 						(dcur->is_union ? "union" : "struct"),
 						dcur->name, pr.suffix, dcur->name);

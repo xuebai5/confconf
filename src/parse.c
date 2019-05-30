@@ -112,6 +112,8 @@ static void sub_parse_deftype(size_t line, size_t col, bool is_union)
 		.col = col,
 		.is_used = false,
 		.is_union = is_union,
+		.is_in_array = false,
+		.is_in_hash = false,
 		.member_list_len = 0,
 	};
 	unsigned i, j;
@@ -366,6 +368,11 @@ struct parse_result_s parse(FILE *f, const char *fname)
 						vcur->name, vcur->deftype_name);
 			}
 			dcur->is_used = true;
+			if (vcur->type == PARSE_TYPE_ARRAY_DEFTYPE)
+				dcur->is_in_array = true;
+			else if (vcur->type == PARSE_TYPE_HASH_DEFTYPE)
+				dcur->is_in_hash = true;
+
 		default:
 			continue;
 		}

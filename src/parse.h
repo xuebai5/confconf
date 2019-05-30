@@ -61,6 +61,8 @@ struct parse_deftype_s {
 	size_t col;
 	bool is_used;
 	bool is_union;
+	bool is_in_array;
+	bool is_in_hash;
 	unsigned member_list_len;
 	enum parse_type_e member_type_list[PARSE_DEFTYPE_MAX_LEN];
 	char member_name_list[PARSE_DEFTYPE_MAX_LEN][TOK_MAX_LEN];
