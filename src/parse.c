@@ -447,11 +447,13 @@ struct parse_result_s parse(FILE *f, const char *fname)
 			ERR_AT(t.line, t.col, "unexpected token `%s`", t.val);
 	}
 
+	/* err >0 rules */
 	if (r.vars == NULL) {
 		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 		ERR("config must specify at fewest one variable rule");
 	}
 
+	/* err undefined type */
 	HASH_ITER(hh, r.vars, vcur, vtmp) {
 		switch (vcur->type) {
 		case PARSE_TYPE_DEFTYPE:
@@ -474,6 +476,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		}
 	}
 
+	/* warn type use */
 	HASH_ITER(hh, r.deftypes, dcur, dtmp) {
 		if (!dcur->is_used) {
 			WARN_AT(dcur->line, dcur->col,
@@ -482,12 +485,17 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		}
 	}
 
-	if (!r.location_seen) {
-		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
-		WARN("no uthash location header specified. using `<uthash.h>`");
-		strcpy(r.location, "<uthash.h>");
+	/* warn hash location */
+	HASH_ITER(hh, r.vars, vcur, vtmp) {
+		if (vcur->type >= PARSE_TYPE_HASH_BOOL && !r.location_seen) {
+			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
+			WARN("no uthash location header specified. using `<uthash.h>`");
+			strcpy(r.location, "<uthash.h>");
+			break;
+		}
 	}
 
+	/* warn/err suffix */
 	if (!r.suffix_seen) {
 
 		j = 0;

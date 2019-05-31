@@ -4,25 +4,25 @@
 #include "analyse.h"
 #include "gen.h"
 
-static void print_tree(struct analyse_tree_s *t)
-{
-	unsigned i;
-	if (t->is_terminal)
-		printf("!");
-
-	if (t->branch_count > 1)
-		printf("(");
-
-	for (i = 0; i < t->branch_count; i++) {
-		printf("%c", t->branch_chars[i]);
-		print_tree(t->branches[i]);
-		if (t->branch_count > 1 && i < t->branch_count - 1)
-			printf("|");
-	}
-
-	if (t->branch_count > 1)
-		printf(")");
-}
+/* static void print_tree(struct analyse_tree_s *t) */
+/* { */
+/* 	unsigned i; */
+/* 	if (t->is_terminal) */
+/* 		printf("!"); */
+/*  */
+/* 	if (t->branch_count > 1) */
+/* 		printf("("); */
+/*  */
+/* 	for (i = 0; i < t->branch_count; i++) { */
+/* 		printf("%c", t->branch_chars[i]); */
+/* 		print_tree(t->branches[i]); */
+/* 		if (t->branch_count > 1 && i < t->branch_count - 1) */
+/* 			printf("|"); */
+/* 	} */
+/*  */
+/* 	if (t->branch_count > 1) */
+/* 		printf(")"); */
+/* } */
 
 int main(int argc, char **argv)
 {
@@ -52,10 +52,10 @@ int main(int argc, char **argv)
 
 	ar = analyse(pr);
 
-	print_tree(&ar.deftype_tree);
-	puts("");
-	print_tree(&ar.var_tree);
-	puts("");
+	/* print_tree(&ar.deftype_tree); */
+	/* puts(""); */
+	/* print_tree(&ar.var_tree); */
+	/* puts(""); */
 
 	gen(fo, pr, ar);
 
