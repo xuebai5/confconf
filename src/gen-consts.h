@@ -1,4 +1,4 @@
-static const char sheaderp1[] =
+static const char sheadp1[] =
 "#ifndef CONFCONF_HEAD_H\n"
 "#define CONFCONF_HEAD_H\n"
 "\n"
@@ -113,7 +113,7 @@ static const char sheaderp1[] =
 "\n"
 ;
 
-static const char sheaderp2[] =
+static const char sheadp2[] =
 "static enum confconf_result_type confconf_priv_get_tok(\n"
 "		struct confconf_priv_state *st)\n"
 "{\n"

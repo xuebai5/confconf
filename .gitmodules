@@ -1,6 +1,6 @@
 [submodule "reqs/simple-opt"]
 	path = reqs/simple-opt
-	url = https://github.com/shmibs/simple-opt
+	url = https://git.airen-no-jikken.icu/k/simple-opt.git
 [submodule "reqs/uthash"]
 	path = reqs/uthash
 	url = https://github.com/troydhanson/uthash.git

@@ -74,8 +74,8 @@ static void sub_match_op(void)
 		{ true, TOK_OP_STRUCT, ".struct" },
 		{ true, TOK_OP_UNION,  ".union"  },
 		{ true, TOK_OP_ENUM,   ".enum"   },
-		{ true, TOK_OP_NAMING_SUFFIX,   ".naming-suffix"   },
-		{ true, TOK_OP_UTHASH_LOCATION, ".uthash-location" },
+		{ true, TOK_OP_NAMING_SUFFIX,   ".name-suffix"   },
+		{ true, TOK_OP_UTHASH_HEADER, ".uthash-header" },
 	};
 	unsigned i, j;
 	bool again;

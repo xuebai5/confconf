@@ -324,11 +324,11 @@ static bool sub_parse_op(void)
 
 		return true;
 
-	case TOK_OP_UTHASH_LOCATION:
-		if (r.location_seen) {
+	case TOK_OP_UTHASH_HEADER:
+		if (r.header_seen) {
 			WARN_AT(t.line, t.col,
-					"uthash location redefined (previous value was %s)",
-					r.location);
+					"uthash header redefined (previous value was %s)",
+					r.header);
 		}
 
 		t = tok_get();
@@ -337,9 +337,9 @@ static bool sub_parse_op(void)
 		if (t.type != TOK_HEADER)
 			ERR_AT(t.line, t.col, "invalid uthash header `%s`", t.val);
 
-		strcpy(r.location, t.val);
+		strcpy(r.header, t.val);
 
-		r.location_seen = true;
+		r.header_seen = true;
 
 		return true;
 
@@ -430,7 +430,7 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct parse_deftype_s *dcur, *dtmp;
 
 	r.suffix_seen = false;
-	r.location_seen = false;
+	r.header_seen = false;
 	r.deftypes = NULL;
 	r.vars = NULL;
 	curfname = fname;
@@ -485,12 +485,12 @@ struct parse_result_s parse(FILE *f, const char *fname)
 		}
 	}
 
-	/* warn hash location */
+	/* warn hash header */
 	HASH_ITER(hh, r.vars, vcur, vtmp) {
-		if (vcur->type >= PARSE_TYPE_HASH_BOOL && !r.location_seen) {
+		if (vcur->type >= PARSE_TYPE_HASH_BOOL && !r.header_seen) {
 			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 			WARN("no uthash location header specified. using `<uthash.h>`");
-			strcpy(r.location, "<uthash.h>");
+			strcpy(r.header, "<uthash.h>");
 			break;
 		}
 	}
