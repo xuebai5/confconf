@@ -5,6 +5,7 @@ CC = cc
 CFLAGS = -O2
 CFLAGSDEBUG = -std=c99 -Wall -pedantic -ggdb3 -O0 -DDEBUG
 PREFIX = /usr/local
+MANPREFIX = /usr/local/share/man
 
 all: confconf
 
@@ -12,9 +13,15 @@ debug: dbg_confconf
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	mkdir -p $(DESTDIR)$(PREFIX)/share/man/man1
+	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
 	cp -f confconf $(DESTDIR)$(PREFIX)/bin
-	gzip < confconf.1 > $(DESTDIR)$(PREFIX)/share/man/man1/confconf.1.gz
+	chmod 755 $(DESTDIR)$(PREFIX)/bin/confconf
+	cp -f doc/man/confconf.1 $(DESTDIR)$(MANPREFIX)/man1/confconf.1
+	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/confconf.1
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/confconf
+	rm -f $(DESTDIR)$(MANPREFIX)/man1/confconf.1
 
 confconf: build/release build/release/opt.o build/release/tok.o build/release/main.o build/release/analyse.o build/release/parse.o build/release/gen.o
 	$(CC) $(LDFLAGS) -o confconf build/release/opt.o build/release/tok.o build/release/main.o build/release/analyse.o build/release/parse.o build/release/gen.o $(LDLIBS)
@@ -74,3 +81,5 @@ clean:
 	rm -f confconf
 	rm -f dbg_confconf
 	rm -rf build
+
+.PHONY: all debug install uninstall confconf dbg_confconf clean
