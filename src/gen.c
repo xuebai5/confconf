@@ -652,6 +652,96 @@ static inline void sub_hashtype(FILE *f, struct parse_result_s *pr,
 	);
 }
 
+static inline void sub_result_struct(FILE *f, struct parse_result_s *pr,
+	struct analyse_result_s *ar)
+{
+	struct parse_var_s *vcur, *vtmp;
+	struct parse_deftype_s *dtp;
+
+	fprintf(f,
+		"struct confconf_result_%s {\n"
+		"	enum confconf_result_type result_type;\n"
+		"	size_t end_col;\n"
+		"	size_t end_line;\n"
+		"	size_t end_byte;\n"
+		"	char *end_tok;\n", 
+		(opt_suffix_str() ? opt_suffix_str() : pr->suffix)
+	);
+
+	HASH_ITER(hh, pr->vars, vcur, vtmp) {
+		switch (vcur->type) {
+		case PARSE_TYPE_BOOL:
+			fprintf(f, "	bool ");
+			break;
+		case PARSE_TYPE_STRING:
+			fprintf(f, "	char *");
+			break;
+		case PARSE_TYPE_ID:
+			fprintf(f, "	char *");
+			break;
+		case PARSE_TYPE_INT:
+			fprintf(f, "	int ");
+			break;
+		case PARSE_TYPE_INTL:
+			fprintf(f, "	long int ");
+			break;
+		case PARSE_TYPE_INTLL:
+			fprintf(f, "	long long int ");
+			break;
+		case PARSE_TYPE_UINT:
+			fprintf(f, "	unsigned ");
+			break;
+		case PARSE_TYPE_UINTL:
+			fprintf(f, "	long unsigned ");
+			break;
+		case PARSE_TYPE_UINTLL:
+			fprintf(f, "	long long unsigned ");
+			break;
+		case PARSE_TYPE_FLOAT:
+			fprintf(f, "	float ");
+			break;
+		case PARSE_TYPE_DOUBLE:
+			fprintf(f, "	double ");
+			break;
+		case PARSE_TYPE_DOUBLEL:
+			fprintf(f, "	long double ");
+			break;
+
+		case PARSE_TYPE_DEFTYPE:
+			HASH_FIND_STR(pr->deftypes, vcur->deftype_name, dtp);
+			assert(dtp != NULL);
+			fprintf(f,
+				"	%s confconf_type_%s_%s ",
+				(dtp->type == PARSE_DEFTYPE_ENUM ? "enum" : "struct"),
+				dtp->name,
+				(opt_suffix_str() ? opt_suffix_str() : pr->suffix)
+			);
+			break;
+
+		default:
+			if (vcur->type >= PARSE_TYPE_HASH_BOOL) {
+				assert(vcur->type <= PARSE_TYPE_HASH_DEFTYPE);
+				fprintf(f,
+					"	struct confconf_hash_%s ",
+					(opt_suffix_str() ? opt_suffix_str() : pr->suffix)
+				);
+			} else if (vcur->type >= PARSE_TYPE_ARRAY_BOOL) {
+				fprintf(f,
+					"	struct confconf_array_%s ",
+					(opt_suffix_str() ? opt_suffix_str() : pr->suffix)
+				);
+			} else {
+				assert(0);
+			}
+			break;
+		}
+
+		fprintf(f, "val_%s;\n", vcur->name);
+	}
+
+	fprintf(f, "};\n\n");
+}
+
 static inline void sub_body(FILE *f, struct parse_result_s *pr,
 	struct analyse_result_s *ar)
 {
@@ -691,6 +781,8 @@ void gen(FILE *f, struct parse_result_s *pr, struct analyse_result_s *ar)
 
 	if (ar->uses_hash)
 		sub_hashtype(f, pr, ar);
+
+	sub_result_struct(f, pr, ar);
 
 	sub_body(f, pr, ar);
 
