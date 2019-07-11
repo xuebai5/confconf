@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#define PARSE_DEFTYPE_MAX_LEN 32
+#define PARSE_DEFTYPE_MAX_LEN 128
 
 /* very important these stay in order.
  * things like ">= PARSE_TYPE_ARRAY_BOOL" used */
@@ -69,6 +69,7 @@ struct parse_deftype_s {
 	bool is_used;
 	bool is_in_array;
 	bool is_in_hash;
+	bool contains_heap;
 	unsigned member_list_len;
 	enum parse_type_e member_type_list[PARSE_DEFTYPE_MAX_LEN];
 	char member_name_list[PARSE_DEFTYPE_MAX_LEN][TOK_MAX_LEN];
@@ -94,8 +95,12 @@ struct parse_result_s {
 	struct parse_var_s *vars;
 };
 
-struct parse_result_s parse(FILE *f, const char *fname);
+extern const char *parse_typestrs[];
 
-void parse_result_wipe(struct parse_result_s *r);
+int parse_typestr_to_type(const char *s);
+
+struct parse_result_s* parse(FILE *f, const char *fname);
+
+void parse_result_free(struct parse_result_s *pr);
 
 #endif

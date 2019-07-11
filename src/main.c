@@ -4,33 +4,15 @@
 #include "analyse.h"
 #include "gen.h"
 
-/* static void print_tree(struct analyse_tree_s *t) */
-/* { */
-/* 	unsigned i; */
-/* 	if (t->is_terminal) */
-/* 		printf("!"); */
-/*  */
-/* 	if (t->branch_count > 1) */
-/* 		printf("("); */
-/*  */
-/* 	for (i = 0; i < t->branch_count; i++) { */
-/* 		printf("%c", t->branch_chars[i]); */
-/* 		print_tree(t->branches[i]); */
-/* 		if (t->branch_count > 1 && i < t->branch_count - 1) */
-/* 			printf("|"); */
-/* 	} */
-/*  */
-/* 	if (t->branch_count > 1) */
-/* 		printf(")"); */
-/* } */
+#include <stdio.h>
 
 int main(int argc, char **argv)
 {
 	FILE *fo = stdout;
 	FILE *fi = stdin;
 	const char *finame = "stdin";
-	struct parse_result_s pr;
-	struct analyse_result_s ar;
+	struct parse_result_s *pr;
+	struct analyse_result_s *ar;
 
 	opt_parse(argc, argv);
 
@@ -52,18 +34,13 @@ int main(int argc, char **argv)
 
 	ar = analyse(pr);
 
-	/* print_tree(&ar.deftype_tree); */
-	/* puts(""); */
-	/* print_tree(&ar.var_tree); */
-	/* puts(""); */
-
 	gen(fo, pr, ar);
 
 	if (fo != stdout)
 		fclose(fo);
 
-	parse_result_wipe(&pr);
-	analyse_result_wipe(&ar);
+	parse_result_free(pr);
+	analyse_result_free(ar);
 
 	return 0;
 }

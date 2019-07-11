@@ -1,4 +1,5 @@
 #include "parse.h"
+
 #include "err.h"
 
 #include <assert.h>
@@ -14,7 +15,7 @@ static const char *curfname;
 #define ERR_AT(l, c, ...) \
 	do { \
 		fprintf(stderr, "\x1B[1m%s:%zu:%zu:\x1B[0m ", \
-				curfname, (l), (c)); \
+			curfname, (l), (c)); \
 		ERR(__VA_ARGS__); \
 	} while (0)
 
@@ -29,23 +30,111 @@ static const char *curfname;
 	do { \
 		if ((t).type == TOK_END) { \
 			ERR_AT((t).line, (t).col, "unexpected end of file (expected %s)", \
-					(m) ); \
+				(m) ); \
 		} \
 	} while (0)
 
 #define WARN_AT(l, c, ...) \
 	do { \
 		fprintf(stderr, "\x1B[1m%s:%zu:%zu:\x1B[0m ", \
-				curfname, (l), (c)); \
+			curfname, (l), (c)); \
 		WARN(__VA_ARGS__); \
 	} while (0)
 
-static struct parse_result_s r;
+static struct parse_result_s prs;
 
-static enum parse_type_e sub_parse_type(void)
+const char *parse_typestrs[] = {
+	[PARSE_TYPE_BOOL]    = "bool",
+	[PARSE_TYPE_STRING]  = "string",
+	[PARSE_TYPE_ID]      = "id",
+	[PARSE_TYPE_INT]     = "int",
+	[PARSE_TYPE_INTL]    = "intl",
+	[PARSE_TYPE_INTLL]   = "intll",
+	[PARSE_TYPE_UINT]    = "uint",
+	[PARSE_TYPE_UINTL]   = "uintl",
+	[PARSE_TYPE_UINTLL]  = "uintll",
+	[PARSE_TYPE_FLOAT]   = "float",
+	[PARSE_TYPE_DOUBLE]  = "double",
+	[PARSE_TYPE_DOUBLEL] = "doublel"
+};
+
+int parse_typestr_to_type(const char *s)
+{
+	if (*s == 'b' 
+		&& *(++s) == 'o' && *(++s) == 'o'
+		&& *(++s) == 'l' && *(++s) == '\0'
+	) {
+		return PARSE_TYPE_BOOL;
+	} else if (*s == 's'
+		&& *(++s) == 't' && *(++s) == 'r'
+		&& *(++s) == 'i' && *(++s) == 'n'
+		&& *(++s) == 'g' && *(++s) == '\0'
+	) {
+		return PARSE_TYPE_STRING;
+	} else if (*s == 'i') {
+		s++;
+		if (*s == 'd' && *(++s) == '\0') {
+			return PARSE_TYPE_ID;
+		} else if (*s == 'n' && *(++s) == 't') {
+			s++;
+			if (*s == '\0') {
+				return PARSE_TYPE_INT;
+			} else if (*s == 'l') {
+				s++;
+				if (*s == '\0') {
+					return PARSE_TYPE_INTL;
+				} else if (*s == 'l' && *(++s) == '\0') {
+					return PARSE_TYPE_INTLL;
+				} else {
+					return -1;
+				}
+			}
+		}
+	} else if (*s == 'u'
+		&& *(++s) == 'i' && *(++s) == 'n'
+		&& *(++s) == 't'
+	) {
+		s++;
+		if (*s == '\0') {
+			return PARSE_TYPE_UINT;
+		} else if (*s == 'l') {
+			s++;
+			if (*s == '\0') {
+				return PARSE_TYPE_UINTL;
+			} else if (*s == 'l' && *(++s) == '\0') {
+				return PARSE_TYPE_UINTLL;
+			} else {
+				return -1;
+			}
+		}
+	} else if (*s == 'f'
+		&& *(++s) == 'l' && *(++s) == 'o'
+		&& *(++s) == 'a' && *(++s) == 't'
+		&& *(++s) == '\0'
+	) {
+		return PARSE_TYPE_FLOAT;
+	} else if (*s == 'd'
+		&& *(++s) == 'o' && *(++s) == 'u'
+		&& *(++s) == 'b' && *(++s) == 'l'
+		&& *(++s) == 'e'
+	) {
+		s++;
+		if (*s == '\0') {
+			return PARSE_TYPE_DOUBLE;
+		} else if (*s == 'l' && *(++s) == '\0') {
+			return PARSE_TYPE_DOUBLEL;
+		} else {
+			return -1;
+		}
+	}
+
+	return -1;
+}
+
+static int sub_parse_type(void)
 {
 	struct tok_s t = tok_get();
-	enum parse_type_e type = PARSE_TYPE_BOOL;
+	enum parse_type_e type = PARSE_TYPE_BOOL, tswp;
 	size_t l, c;
 
 	l = t.line;
@@ -71,41 +160,10 @@ static enum parse_type_e sub_parse_type(void)
 			ERR_AT(l, c, "invalid type `%s`", t.val);
 	}
 
-	if (!strcmp(t.val, "bool"))
-		return type;
+	tswp = parse_typestr_to_type(t.val);
 
-	if (!strcmp(t.val, "string"))
-		return type + PARSE_TYPE_STRING;
-
-	if (!strcmp(t.val, "id"))
-		return type + PARSE_TYPE_ID;
-
-	if (!strcmp(t.val, "int"))
-		return type + PARSE_TYPE_INT;
-
-	if (!strcmp(t.val, "intl"))
-		return type + PARSE_TYPE_INTL;
-
-	if (!strcmp(t.val, "intll"))
-		return type + PARSE_TYPE_INTLL;
-
-	if (!strcmp(t.val, "uint"))
-		return type + PARSE_TYPE_UINT;
-
-	if (!strcmp(t.val, "uintl"))
-		return type + PARSE_TYPE_UINTL;
-
-	if (!strcmp(t.val, "uintll"))
-		return type + PARSE_TYPE_UINTLL;
-
-	if (!strcmp(t.val, "float"))
-		return type + PARSE_TYPE_FLOAT;
-
-	if (!strcmp(t.val, "double"))
-		return type + PARSE_TYPE_DOUBLE;
-
-	if (!strcmp(t.val, "doublel"))
-		return type + PARSE_TYPE_DOUBLEL;
+	if (tswp != -1)
+		return type + tswp;
 
 	tok_unget(t);
 
@@ -113,7 +171,7 @@ static enum parse_type_e sub_parse_type(void)
 }
 
 static void sub_parse_deftype(size_t line, size_t col,
-		enum parse_deftype_e dtype)
+	enum parse_deftype_e dtype)
 {
 	struct tok_s t;
 	enum parse_type_e type;
@@ -125,68 +183,62 @@ static void sub_parse_deftype(size_t line, size_t col,
 		.type = dtype,
 		.is_in_array = false,
 		.is_in_hash = false,
+		.contains_heap = false,
 		.member_list_len = 0,
 	};
 	unsigned i, j;
 
+	/* name */
+
 	t = tok_get();
 	ERR_END(t,
-			(dt.type == PARSE_DEFTYPE_UNION ? "union name" :
-				(dt.type == PARSE_DEFTYPE_STRUCT ?
-				 "struct name" : "enum name"
-				)
+		(dt.type == PARSE_DEFTYPE_UNION ? "union name" :
+			(dt.type == PARSE_DEFTYPE_STRUCT ?
+			 "struct name" : "enum name"
 			)
+		)
 	);
 	ERR_LONG(t);
 	if (t.type != TOK_ID) {
-			ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
-					t.val,
-					(dt.type == PARSE_DEFTYPE_UNION ? "union"
-						: (dt.type == PARSE_DEFTYPE_STRUCT ? "struct" : "enum")
-					)
-			);
-	}
-
-	if (
-			dt.type != PARSE_DEFTYPE_ENUM && (
-			!strcmp(t.val, "hash") || !strcmp(t.val, "array") ||
-			!strcmp(t.val, "bool") ||
-			!strcmp(t.val, "string") || !strcmp(t.val, "id") ||
-			!strcmp(t.val, "int") || !strcmp(t.val, "intl") ||
-			!strcmp(t.val, "intll") ||
-			!strcmp(t.val, "uint") || !strcmp(t.val, "uintl") ||
-			!strcmp(t.val, "uintll") ||
-			!strcmp(t.val, "float") || !strcmp(t.val, "double") ||
-			!strcmp(t.val, "doublell")
+		ERR_AT(t.line, t.col, "unexpected token `%s` (expected %s name)",
+			t.val,
+			(dt.type == PARSE_DEFTYPE_UNION ? "union"
+				: (dt.type == PARSE_DEFTYPE_STRUCT ? "struct" : "enum")
 			)
-	) {
-		ERR_AT(dt.line, dt.col,
-				"defined type conflicts with builtin type `%s`", t.val);
+		);
 	}
 
-	HASH_FIND_STR(r.deftypes, t.val, dtp);
+	if (parse_typestr_to_type(t.val) != -1) {
+		ERR_AT(dt.line, dt.col,
+			"defined type conflicts with builtin type `%s`", t.val);
+	}
+
+	HASH_FIND_STR(prs.deftypes, t.val, dtp);
 	if (dtp != NULL) {
 		ERR_AT(dt.line, dt.col,
-				"type `%s` redefined (previous definition was at line %zu)",
-				t.val, dtp->line);
+			"type `%s` redefined (previous definition was at line %zu)",
+			t.val, dtp->line);
 	}
 
 	strcpy(dt.name, t.val);
+
+	/* { */
 
 	t = tok_get();
 	ERR_END(t, "`{`");
 	if (t.type != TOK_LBRACE)
 		ERR_AT(t.line, t.col, "unexpected token `%s` (expected `{`)", t.val);
 
+	/* body */
+
 	while (true) {
 		if (dt.member_list_len == PARSE_DEFTYPE_MAX_LEN) {
 			ERR_AT(dt.line, dt.col, "%s %s has too many %s",
-					(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
-						 (dt.type == PARSE_DEFTYPE_UNION ?
-						  "union" : "struct")
-					),
-					dt.name,
-					(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
+				(dt.type == PARSE_DEFTYPE_ENUM ? "enum" :
+					(dt.type == PARSE_DEFTYPE_UNION ? "union" : "struct")
+				),
+				dt.name,
+				(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
 			);
 		}
 
@@ -194,12 +246,11 @@ static void sub_parse_deftype(size_t line, size_t col,
 		if (t.type == TOK_RBRACE) {
 			if (dt.member_list_len < 2) {
 				ERR_AT(dt.line, dt.col, "%s `%s` must specify at fewest two %s",
-						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
-							 (dt.type == PARSE_DEFTYPE_UNION ?
-							  "union" : "struct")
-						),
-						dt.name,
-						(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
+					(dt.type == PARSE_DEFTYPE_ENUM ? "enum" :
+						(dt.type == PARSE_DEFTYPE_UNION ? "union" : "struct")
+					),
+					dt.name,
+					(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members")
 				);
 			}
 
@@ -209,51 +260,55 @@ static void sub_parse_deftype(size_t line, size_t col,
 		if (dt.type != PARSE_DEFTYPE_ENUM) {
 			tok_unget(t);
 
-			ERR_END(t, "type or `}`");
+			ERR_END(t, 
+				(dt.member_list_len < 2 ? "type" : "type or `}`")
+			);
 
 			type = sub_parse_type();
 
 			if (type >= PARSE_TYPE_ARRAY_BOOL) {
 				ERR_AT(t.line, t.col,
-						"defined types may not contain arrays or hashes");
+					"defined types may not contain arrays or hashes");
 			}
-			/*  */
 
 			if (type == PARSE_TYPE_DEFTYPE) {
 				t = tok_get();
 				ERR_AT(t.line, t.col,
-						"defined types may not contain other defined types");
+					"defined types may not contain other defined types");
 			}
+
+			if (type == PARSE_TYPE_STRING || type == PARSE_TYPE_ID)
+				dt.contains_heap = true;
 
 			t = tok_get();
 		}
 
-		ERR_END(t, (dt.type == PARSE_DEFTYPE_ENUM ? "id or `}`"
-					: "member name"));
+		ERR_END(t,
+			(dt.type == PARSE_DEFTYPE_ENUM
+				? (dt.member_list_len > 1 ? "id or `}`" : "id")
+				: "member name"
+			)
+		);
 		ERR_LONG(t);
 
 		if (t.type != TOK_ID) {
 			if (t.type == TOK_RBRACE || t.type == TOK_COMMA) {
 				ERR_AT(t.line, t.col, "missing %s in %s `%s'",
-						(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
-						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
-						 (dt.type == PARSE_DEFTYPE_UNION ?
-						  "union" : "struct"
-						 )
-						),
-						dt.name
+					(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
+					(dt.type == PARSE_DEFTYPE_ENUM ? "enum" :
+						(dt.type == PARSE_DEFTYPE_UNION ? "union" : "struct")
+					),
+					dt.name
 				);
 			}
 
 			ERR_AT(t.line, t.col, "bad %s `%s` in %s %s",
-						(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
-						t.val,
-						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
-						 (dt.type == PARSE_DEFTYPE_UNION ?
-						  "union" : "struct"
-						 )
-						),
-						dt.name
+				(dt.type == PARSE_DEFTYPE_ENUM ? "id" : "member name"),
+				t.val,
+				(dt.type == PARSE_DEFTYPE_ENUM ? "enum" :
+					(dt.type == PARSE_DEFTYPE_UNION ? "union" : "struct")
+				),
+				dt.name
 			);
 		}
 
@@ -270,24 +325,32 @@ static void sub_parse_deftype(size_t line, size_t col,
 		for (j = i + 1; j < dt.member_list_len; j++) {
 			if (!strcmp(dt.member_name_list[i], dt.member_name_list[j]) ) {
 				ERR_AT(dt.line, dt.col,
-						"%s `%s` contains multiple %s named `%s`",
-						(dt.type == PARSE_DEFTYPE_ENUM ? "enum" : 
-						 (dt.type == PARSE_DEFTYPE_UNION ?
-						  "union" : "struct")
-						),
-						dt.name,
-						(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members"),
-						dt.member_name_list[i]
+					"%s `%s` contains multiple %s named `%s`",
+					(dt.type == PARSE_DEFTYPE_ENUM ? "enum" :
+						(dt.type == PARSE_DEFTYPE_UNION ? "union" : "struct")
+					),
+					dt.name,
+					(dt.type == PARSE_DEFTYPE_ENUM ? "ids" : "members"),
+					dt.member_name_list[i]
 				);
 			}
 
+			if (dt.type == PARSE_DEFTYPE_UNION
+				&& dt.member_type_list[i] == dt.member_type_list[j]
+			) {
+				ERR_AT(dt.line, dt.col,
+					"union `%s` contains multiple members of type %s",
+					dt.name,
+					parse_typestrs[dt.member_type_list[i]]
+				);
+			}
 		}
 	}
 
 	TRYALLOC(dtp, 1);
 	memcpy(dtp, &dt, sizeof(*dtp));
 
-	HASH_ADD_STR(r.deftypes, name, dtp);
+	HASH_ADD_STR(prs.deftypes, name, dtp);
 }
 
 static bool sub_parse_op(void)
@@ -306,10 +369,10 @@ static bool sub_parse_op(void)
 		return true;
 
 	case TOK_OP_NAMING_SUFFIX:
-		if (r.suffix_seen) {
+		if (prs.suffix_seen) {
 			WARN_AT(t.line, t.col,
-					"naming suffix redefined (previous value was `%s`)",
-					r.suffix);
+				"naming suffix redefined (previous value was `%s`)",
+				prs.suffix);
 		}
 
 		t = tok_get();
@@ -318,17 +381,17 @@ static bool sub_parse_op(void)
 		if (t.type != TOK_ID)
 			ERR_AT(t.line, t.col, "invalid naming suffix `%s`", t.val);
 
-		strcpy(r.suffix, t.val);
+		strcpy(prs.suffix, t.val);
 
-		r.suffix_seen = true;
+		prs.suffix_seen = true;
 
 		return true;
 
 	case TOK_OP_UTHASH_HEADER:
-		if (r.header_seen) {
+		if (prs.header_seen) {
 			WARN_AT(t.line, t.col,
-					"uthash header redefined (previous value was %s)",
-					r.header);
+				"uthash header redefined (previous value was %s)",
+				prs.header);
 		}
 
 		t = tok_get();
@@ -337,9 +400,9 @@ static bool sub_parse_op(void)
 		if (t.type != TOK_HEADER)
 			ERR_AT(t.line, t.col, "invalid uthash header `%s`", t.val);
 
-		strcpy(r.header, t.val);
+		strcpy(prs.header, t.val);
 
-		r.header_seen = true;
+		prs.header_seen = true;
 
 		return true;
 
@@ -376,14 +439,14 @@ static bool sub_parse_rule(void)
 	ERR_LONG(t);
 	if (t.type != TOK_ID) {
 		ERR_AT(t.line, t.col,
-				"unexpected token `%s`, (expected variable name)", t.val);
+			"unexpected token `%s`, (expected variable name)", t.val);
 	}
 
-	HASH_FIND_STR(r.vars, t.val, vp);
+	HASH_FIND_STR(prs.vars, t.val, vp);
 	if (vp != NULL) {
 		ERR_AT(v.line, v.col,
-				"`%s` redefined (previous definition was at line %zu)",
-				t.val, vp->line);
+			"`%s` redefined (previous definition was at line %zu)",
+			t.val, vp->line);
 	}
 
 	strcpy(v.name, t.val);
@@ -396,8 +459,8 @@ static bool sub_parse_rule(void)
 	v.type = sub_parse_type();
 
 	if (v.type == PARSE_TYPE_DEFTYPE
-			|| v.type == PARSE_TYPE_ARRAY_DEFTYPE
-			|| v.type == PARSE_TYPE_HASH_DEFTYPE
+		|| v.type == PARSE_TYPE_ARRAY_DEFTYPE
+		|| v.type == PARSE_TYPE_HASH_DEFTYPE
 	) {
 		t = tok_get();
 		strcpy(v.deftype_name, t.val);
@@ -405,13 +468,13 @@ static bool sub_parse_rule(void)
 
 	TRYALLOC(vp, 1);
 	memcpy(vp, &v, sizeof(*vp));
-	HASH_ADD_STR(r.vars, name, vp);
+	HASH_ADD_STR(prs.vars, name, vp);
 
 	return true;
 }
 
 static int sub_sort_deftypes(struct parse_deftype_s *d1,
-		struct parse_deftype_s *d2)
+	struct parse_deftype_s *d2)
 {
 	return strcmp(d1->name, d2->name);
 }
@@ -421,7 +484,7 @@ static int sub_sort_vars(struct parse_var_s *v1, struct parse_var_s *v2)
 	return strcmp(v1->name, v2->name);
 }
 
-struct parse_result_s parse(FILE *f, const char *fname)
+struct parse_result_s* parse(FILE *f, const char *fname)
 {
 	size_t i, j;
 	struct tok_s t;
@@ -429,10 +492,17 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	struct parse_var_s *vcur, *vtmp;
 	struct parse_deftype_s *dcur, *dtmp;
 
-	r.suffix_seen = false;
-	r.header_seen = false;
-	r.deftypes = NULL;
-	r.vars = NULL;
+	struct parse_result_s *pr;
+
+	assert(f != NULL);
+	assert(fname != NULL);
+
+	TRYALLOC(pr, 1);
+
+	prs.suffix_seen = false;
+	prs.header_seen = false;
+	prs.deftypes = NULL;
+	prs.vars = NULL;
 	curfname = fname;
 
 	tok_reset(f);
@@ -448,22 +518,22 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	}
 
 	/* err >0 rules */
-	if (r.vars == NULL) {
+	if (prs.vars == NULL) {
 		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 		ERR("config must specify at fewest one variable rule");
 	}
 
 	/* err undefined type */
-	HASH_ITER(hh, r.vars, vcur, vtmp) {
+	HASH_ITER(hh, prs.vars, vcur, vtmp) {
 		switch (vcur->type) {
 		case PARSE_TYPE_DEFTYPE:
 		case PARSE_TYPE_ARRAY_DEFTYPE:
 		case PARSE_TYPE_HASH_DEFTYPE:
-			HASH_FIND_STR(r.deftypes, vcur->deftype_name, dcur);
+			HASH_FIND_STR(prs.deftypes, vcur->deftype_name, dcur);
 			if (dcur == NULL) {
 				ERR_AT(vcur->line, vcur->col,
-						"rule for variable `%s` references undefined type `%s`",
-						vcur->name, vcur->deftype_name);
+					"rule for variable `%s` references undefined type `%s`",
+					vcur->name, vcur->deftype_name);
 			}
 			dcur->is_used = true;
 			if (vcur->type == PARSE_TYPE_ARRAY_DEFTYPE)
@@ -477,31 +547,31 @@ struct parse_result_s parse(FILE *f, const char *fname)
 	}
 
 	/* warn type use */
-	HASH_ITER(hh, r.deftypes, dcur, dtmp) {
+	HASH_ITER(hh, prs.deftypes, dcur, dtmp) {
 		if (!dcur->is_used) {
 			WARN_AT(dcur->line, dcur->col,
-					"type `%s` defined but not used",
-					dcur->name);
+				"type `%s` defined but not used",
+				dcur->name);
 		}
 	}
 
 	/* warn hash header */
-	HASH_ITER(hh, r.vars, vcur, vtmp) {
-		if (vcur->type >= PARSE_TYPE_HASH_BOOL && !r.header_seen) {
+	HASH_ITER(hh, prs.vars, vcur, vtmp) {
+		if (vcur->type >= PARSE_TYPE_HASH_BOOL && !prs.header_seen) {
 			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 			WARN("no uthash location header specified. using `<uthash.h>`");
-			strcpy(r.header, "<uthash.h>");
+			strcpy(prs.header, "<uthash.h>");
 			break;
 		}
 	}
 
 	/* warn/err suffix */
-	if (!r.suffix_seen) {
+	if (!prs.suffix_seen) {
 
 		j = 0;
 
 		for (i = strlen(fname); i > 0 && fname[i] != '/'
-				&& fname[i] != '\\'; i--);
+			&& fname[i] != '\\'; i--);
 
 		j = i + (fname[i] == '/' || fname[i] == '\\');
 
@@ -510,45 +580,48 @@ struct parse_result_s parse(FILE *f, const char *fname)
 				fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 				ERR("no function suffix specified, and could not generate one");
 			}
-			r.suffix[i - j] = fname[i];
+			prs.suffix[i - j] = fname[i];
 		}
 
-		r.suffix[i - j] = '\0';
+		prs.suffix[i - j] = '\0';
 
-		if (r.suffix[0] == '\0') {
+		if (prs.suffix[0] == '\0') {
 			fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
 			ERR("no function suffix specified, and could not generate one");
 		}
 
 		fprintf(stderr, "\x1B[1m%s:\x1B[0m ", fname);
-		WARN("no function suffix specified. using `%s`...", r.suffix);
+		WARN("no function suffix specified. using `%s`...", prs.suffix);
 	}
 
-	HASH_SORT(r.deftypes, sub_sort_deftypes);
-	HASH_SORT(r.vars, sub_sort_vars);
+	HASH_SORT(prs.deftypes, sub_sort_deftypes);
+	HASH_SORT(prs.vars, sub_sort_vars);
 
-	return r;
+	memcpy(pr, &prs, sizeof(struct parse_result_s));
+
+	return pr;
 }
 
-void parse_result_wipe(struct parse_result_s *r)
+void parse_result_free(struct parse_result_s *pr)
 {
 	struct parse_var_s *vcur, *vtmp;
 	struct parse_deftype_s *dcur, *dtmp;
 
-	assert(r != NULL);
+	assert(pr != NULL);
 
-	if (r->vars != NULL) {
-		HASH_ITER(hh, r->vars, vcur, vtmp) {
-			HASH_DEL(r->vars, vcur);
+	if (pr->vars != NULL) {
+		HASH_ITER(hh, pr->vars, vcur, vtmp) {
+			HASH_DEL(pr->vars, vcur);
 			free(vcur);
 		}
 	}
 
-	if (r->deftypes != NULL) {
-		HASH_ITER(hh, r->deftypes, dcur, dtmp) {
-			HASH_DEL(r->deftypes, dcur);
+	if (pr->deftypes != NULL) {
+		HASH_ITER(hh, pr->deftypes, dcur, dtmp) {
+			HASH_DEL(pr->deftypes, dcur);
 			free(dcur);
 		}
 	}
 
+	free(pr);
 }

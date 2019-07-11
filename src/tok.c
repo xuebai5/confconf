@@ -236,6 +236,8 @@ static void sub_match_header(void)
 
 void tok_reset(FILE *f)
 {
+	assert(f != NULL);
+
 	curf = f;
 	curtok.line = 1;
 	curtok.col = 1;
@@ -252,7 +254,7 @@ struct tok_s tok_get(void)
 	if (unget) {
 		unget = false;
 		return curtok;
-	} 
+	}
 	curtok.col += vlen;
 	vlen = 0;
 
